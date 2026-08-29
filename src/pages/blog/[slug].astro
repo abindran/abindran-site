@@ -1,0 +1,79 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import SeriesBox from '../../components/SeriesBox.astro';
+import Pager from '../../components/Pager.astro';
+import { getPosts, getSeriesContext, urls } from '../../lib/content';
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+
+const { post } = Astro.props as Props;
+const { Content, remarkPluginFrontmatter } = await render(post);
+const seriesContext = await getSeriesContext(post);
+
+const readingTime: number = remarkPluginFrontmatter.readingTime ?? 1;
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  type="article"
+  publishedTime={post.data.date}
+  modifiedTime={post.data.updated}
+>
+  <article>
+    <header class="article__header">
+      <h1 class="article__title">{post.data.title}</h1>
+      <p class="article__desc">{post.data.description}</p>
+
+      <div class="article__meta">
+        <FormattedDate date={post.data.date} />
+        <span class="meta-dot">{readingTime} min read</span>
+        {post.data.updated && (
+          <span class="meta-dot">
+            Updated <FormattedDate date={post.data.updated} />
+          </span>
+        )}
+        {post.data.draft && <span class="badge badge--draft">Draft</span>}
+      </div>
+    </header>
+
+    {seriesContext && (
+      <SeriesBox
+        series={seriesContext.series}
+        posts={seriesContext.posts}
+        currentId={post.id}
+        position={seriesContext.position}
+        total={seriesContext.total}
+      />
+    )}
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <footer class="article__footer">
+      {post.data.tags.length > 0 && (
+        <ul class="tag-list" role="list">
+          {post.data.tags.map((tag) => (
+            <li><a href={urls.tag(tag)} class="badge">{tag}</a></li>
+          ))}
+        </ul>
+      )}
+
+      {seriesContext && (
+        <Pager prev={seriesContext.prev} next={seriesContext.next} />
+      )}
+    </footer>
+  </article>
+</BaseLayout>

@@ -1,11 +1,56 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { getPosts, getAllSeries, urls } from '../lib/content';
+import { SITE } from '../consts';
 
-const blogEntries = await getCollection('blog');
-// console.log(blogEntries);
+const posts = (await getPosts()).slice(0, 5);
+const series = (await getAllSeries()).filter((s) => s.posts.length > 0);
 ---
 
-<BaseLayout title="Home">
-  <h1>Astro</h1>
+<BaseLayout title={SITE.title} description={SITE.description} bareTitle>
+  <div class="page-header">
+    <h1 class="page-header__title">{SITE.title}</h1>
+    <p class="page-header__lede">{SITE.description}</p>
+  </div>
+
+  <section class="section">
+    <div class="section__head">
+      <h2 class="section__title">Recent writing</h2>
+      <a href="/blog" class="section__more">All posts →</a>
+    </div>
+
+    {posts.length > 0 ? (
+      <ul class="post-list" role="list">
+        {posts.map((post) => (
+          <li><PostCard post={post} /></li>
+        ))}
+      </ul>
+    ) : (
+      <p class="empty-note">Nothing published yet.</p>
+    )}
+  </section>
+
+  {series.length > 0 && (
+    <section class="section">
+      <div class="section__head">
+        <h2 class="section__title">Series</h2>
+        <a href="/series" class="section__more">All series →</a>
+      </div>
+
+      <ul class="post-list" role="list">
+        {series.map(({ series: s, posts: p }) => (
+          <li class="post-card">
+            <a href={urls.series(s)} class="post-card__link">
+              <h3 class="post-card__title">{s.data.title}</h3>
+              <p class="post-card__desc">{s.data.description}</p>
+            </a>
+            <div class="post-card__meta">
+              {p.length} {p.length === 1 ? 'part' : 'parts'}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
 </BaseLayout>

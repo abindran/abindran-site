@@ -1,0 +1,340 @@
+@use "tokens" as *;
+
+// Long-form article body. This is the part of the site that matters most —
+// everything here is in service of sustained reading.
+
+.prose {
+  font-family: $font-serif;
+  font-size: 1.1875rem;
+  line-height: 1.75;
+  max-width: $measure;
+
+  @include below($bp-sm) {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+
+  > * + * { margin-top: $space-6; }
+
+  p { hanging-punctuation: first last; }
+
+  h2, h3, h4 {
+    font-family: $font-sans;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    scroll-margin-top: $space-8;
+  }
+
+  h2 {
+    font-size: $text-2xl;
+    font-weight: 660;
+    margin-top: $space-16;
+    padding-top: $space-2;
+  }
+
+  h3 {
+    font-size: $text-xl;
+    font-weight: 620;
+    margin-top: $space-12;
+  }
+
+  h4 {
+    font-size: $text-lg;
+    font-weight: 600;
+    margin-top: $space-8;
+  }
+
+  // Anchor links on headings, revealed on hover.
+  .heading-anchor {
+    color: var(--text-faint);
+    text-decoration: none;
+    margin-left: 0.4em;
+    opacity: 0;
+    font-weight: 400;
+    transition: opacity 0.12s ease;
+
+    &:focus { opacity: 1; }
+  }
+
+  h2:hover .heading-anchor,
+  h3:hover .heading-anchor,
+  h4:hover .heading-anchor { opacity: 1; }
+
+  ul, ol {
+    padding-left: $space-6;
+
+    li + li { margin-top: $space-2; }
+  }
+
+  li::marker { color: var(--text-faint); }
+
+  blockquote {
+    border-left: 2px solid var(--border-strong);
+    padding-left: $space-6;
+    color: var(--text-muted);
+    font-style: italic;
+
+    @include below($bp-sm) { padding-left: $space-4; }
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin-block: $space-12;
+  }
+
+  img {
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  figure figcaption {
+    margin-top: $space-3;
+    font-family: $font-sans;
+    font-size: $text-sm;
+    color: var(--text-faint);
+    text-align: center;
+  }
+
+  // Inline code
+  :not(pre) > code {
+    font-family: $font-mono;
+    font-size: 0.875em;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
+    white-space: nowrap;
+  }
+
+  // Shiki output
+  pre {
+    font-family: $font-mono;
+    font-size: $text-sm;
+    line-height: 1.6;
+    padding: $space-4 $space-6;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    tab-size: 2;
+
+    @include below($bp-sm) {
+      padding: $space-4;
+      border-radius: 0;
+      margin-inline: -$space-4;
+      border-inline: 0;
+    }
+
+    code {
+      font-family: inherit;
+      font-size: inherit;
+      background: none;
+      border: 0;
+      padding: 0;
+    }
+  }
+
+  // Shiki dual-theme switching. Shiki emits light colours inline and dark ones
+  // as CSS custom properties; this swaps them under a dark colour scheme.
+  // !important is required — Shiki writes the light colour as an inline style.
+  @media (prefers-color-scheme: dark) {
+    .astro-code,
+    .astro-code span {
+      color: var(--shiki-dark) !important;
+      background-color: var(--shiki-dark-bg) !important;
+      font-style: var(--shiki-dark-font-style) !important;
+      font-weight: var(--shiki-dark-font-weight) !important;
+      text-decoration: var(--shiki-dark-text-decoration) !important;
+    }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: $font-sans;
+    font-size: $text-sm;
+    display: block;
+    overflow-x: auto;
+
+    th, td {
+      text-align: left;
+      padding: $space-2 $space-3;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom-color: var(--border-strong);
+    }
+  }
+}
+
+// ---------------------------------------------------------------- article
+
+.article {
+  &__header {
+    margin-bottom: $space-12;
+    padding-bottom: $space-8;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &__title {
+    font-size: $text-3xl;
+    font-weight: 680;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+
+    @include below($bp-sm) { font-size: $text-2xl; }
+  }
+
+  &__desc {
+    margin-top: $space-4;
+    font-size: $text-lg;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  &__meta {
+    margin-top: $space-6;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $space-2 $space-3;
+    font-size: $text-sm;
+    color: var(--text-faint);
+  }
+
+  &__footer {
+    margin-top: $space-16;
+    padding-top: $space-8;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: $space-6;
+  }
+}
+
+// ------------------------------------------------------- series in-article
+
+.series-box {
+  margin-bottom: $space-12;
+  padding: $space-6;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: $font-sans;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: $space-4;
+    flex-wrap: wrap;
+  }
+
+  &__label {
+    font-size: $text-xs;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--text-faint);
+  }
+
+  &__progress {
+    font-size: $text-sm;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__title {
+    margin-top: $space-1;
+    font-size: $text-lg;
+    font-weight: 620;
+
+    a { color: var(--text); text-decoration: none;
+        &:hover { color: var(--accent); } }
+  }
+
+  &__list {
+    margin-top: $space-4;
+    list-style: none;
+    counter-reset: series;
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  &__item {
+    counter-increment: series;
+    font-size: $text-sm;
+    display: flex;
+    gap: $space-3;
+    padding: $space-1 0;
+
+    &::before {
+      content: counter(series) ".";
+      color: var(--text-faint);
+      font-variant-numeric: tabular-nums;
+      min-width: 1.5em;
+    }
+
+    a { color: var(--text-muted); text-decoration: none;
+        &:hover { color: var(--accent); text-decoration: underline; } }
+  }
+
+  &__item--current {
+    font-weight: 600;
+
+    &::before { color: var(--accent); }
+    span { color: var(--text); }
+  }
+}
+
+// ---------------------------------------------------------------- prev/next
+
+.pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
+  font-family: $font-sans;
+
+  @include below($bp-sm) { grid-template-columns: 1fr; }
+
+  &__link {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+    padding: $space-4;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-subtle);
+    }
+
+    &--next {
+      grid-column: 2;
+      text-align: right;
+
+      @include below($bp-sm) { grid-column: 1; }
+    }
+  }
+
+  &__label {
+    font-size: $text-xs;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+
+  &__title {
+    font-size: $text-sm;
+    font-weight: 550;
+    color: var(--text);
+    line-height: 1.4;
+  }
+}

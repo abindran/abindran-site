@@ -1,0 +1,36 @@
+---
+import type { Post } from '../lib/content';
+import { urls } from '../lib/content';
+import { getEntry } from 'astro:content';
+import FormattedDate from './FormattedDate.astro';
+
+interface Props {
+  post: Post;
+  showSeries?: boolean;
+}
+
+const { post, showSeries = true } = Astro.props;
+
+const series =
+  showSeries && post.data.series ? await getEntry(post.data.series) : null;
+---
+
+<article class="post-card">
+  <a href={urls.post(post)} class="post-card__link">
+    <h3 class="post-card__title">{post.data.title}</h3>
+    <p class="post-card__desc">{post.data.description}</p>
+  </a>
+
+  <div class="post-card__meta">
+    <FormattedDate date={post.data.date} />
+
+    {series && (
+      <span class="meta-dot">
+        {series.data.title}
+        {post.data.seriesOrder && ` · Part ${post.data.seriesOrder}`}
+      </span>
+    )}
+
+    {post.data.draft && <span class="badge badge--draft">Draft</span>}
+  </div>
+</article>

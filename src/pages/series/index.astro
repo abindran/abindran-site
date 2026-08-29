@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllSeries, urls } from '../../lib/content';
+
+const allSeries = await getAllSeries();
+---
+
+<BaseLayout
+  title="Series"
+  description="Multi-part articles, written to be read in order."
+>
+  <div class="page-header">
+    <h1 class="page-header__title">Series</h1>
+    <p class="page-header__lede">
+      Multi-part articles, written to be read in order.
+    </p>
+  </div>
+
+  {allSeries.length > 0 ? (
+    <ul class="post-list" role="list">
+      {allSeries.map(({ series, posts }) => (
+        <li class="post-card">
+          <a href={urls.series(series)} class="post-card__link">
+            <h2 class="post-card__title">{series.data.title}</h2>
+            <p class="post-card__desc">{series.data.description}</p>
+          </a>
+          <div class="post-card__meta">
+            {posts.length} {posts.length === 1 ? 'part' : 'parts'}
+          </div>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-note">No series yet.</p>
+  )}
+</BaseLayout>

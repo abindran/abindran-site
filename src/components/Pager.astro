@@ -1,0 +1,29 @@
+---
+import type { Post } from '../lib/content';
+import { urls } from '../lib/content';
+
+interface Props {
+  prev?: Post;
+  next?: Post;
+}
+
+const { prev, next } = Astro.props;
+---
+
+{(prev || next) && (
+  <nav class="pager" aria-label="Series pagination">
+    {prev && (
+      <a href={urls.post(prev)} class="pager__link">
+        <span class="pager__label">← Previous</span>
+        <span class="pager__title">{prev.data.title}</span>
+      </a>
+    )}
+
+    {next && (
+      <a href={urls.post(next)} class="pager__link pager__link--next">
+        <span class="pager__label">Next →</span>
+        <span class="pager__title">{next.data.title}</span>
+      </a>
+    )}
+  </nav>
+)}

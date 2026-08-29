@@ -1,0 +1,90 @@
+// Design tokens.
+//
+// Colour is defined as CSS custom properties (not Sass variables) so the same
+// declarations can be re-pointed at dark values inside a media query without
+// duplicating every rule that consumes them. Sass variables are used for values
+// that never change at runtime: the type scale, spacing, breakpoints.
+
+:root {
+  // Neutrals — warm greys, slightly off-pure to avoid harsh contrast.
+  --bg: #fdfdfc;
+  --bg-subtle: #f4f4f1;
+  --bg-code: #f6f6f4;
+  --border: #e3e3de;
+  --border-strong: #cfcfc8;
+
+  --text: #22221f;
+  --text-muted: #6b6b63;
+  --text-faint: #91918a;
+
+  --accent: #9a3412;
+  --accent-hover: #7c2d12;
+  --accent-subtle: #fdf3ee;
+
+  --selection: #f7dcc9;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161614;
+    --bg-subtle: #1e1e1b;
+    --bg-code: #1c1c19;
+    --border: #2e2e2a;
+    --border-strong: #43433d;
+
+    --text: #e8e8e3;
+    --text-muted: #a3a39a;
+    --text-faint: #78786f;
+
+    --accent: #f0946a;
+    --accent-hover: #f5b393;
+    --accent-subtle: #241a15;
+
+    --selection: #4a2f21;
+
+    color-scheme: dark;
+  }
+}
+
+// Type scale — 1.200 (minor third), rounded to sensible rem values.
+$text-xs:   0.75rem;
+$text-sm:   0.875rem;
+$text-base: 1.0625rem;
+$text-lg:   1.25rem;
+$text-xl:   1.5rem;
+$text-2xl:  1.875rem;
+$text-3xl:  2.25rem;
+
+// Spacing
+$space-1: 0.25rem;
+$space-2: 0.5rem;
+$space-3: 0.75rem;
+$space-4: 1rem;
+$space-6: 1.5rem;
+$space-8: 2rem;
+$space-12: 3rem;
+$space-16: 4rem;
+$space-24: 6rem;
+
+// Layout
+$measure: 68ch;      // optimal line length for long-form reading
+$content-width: 44rem;
+$wide-width: 60rem;
+
+// Breakpoints
+$bp-sm: 40rem;
+$bp-md: 52rem;
+
+@mixin below($bp) {
+  @media (max-width: $bp) { @content; }
+}
+
+// Font stacks
+$font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+            "Helvetica Neue", Arial, sans-serif;
+$font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+             "Times New Roman", serif;
+$font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+            "Liberation Mono", monospace;

@@ -1,3 +1,7 @@
 allowBuilds:
   esbuild: true
   sharp: true
+  # Native file-watcher pulled in by sass. Only used by sass's own --watch mode,
+  # which this project never runs — Vite does the watching. Explicitly denied so
+  # pnpm does not treat it as an unresolved decision on every install.
+  "@parcel/watcher": false

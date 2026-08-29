@@ -1,0 +1,60 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { getAllSeries, urls } from '../../lib/content';
+
+export const getStaticPaths = (async () => {
+  const allSeries = await getAllSeries();
+  return allSeries.map(({ series, posts }) => ({
+    params: { slug: series.id },
+    props: { series, posts },
+  }));
+}) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+
+const { series, posts } = Astro.props as Props;
+const { Content } = await render(series);
+---
+
+<BaseLayout title={series.data.title} description={series.data.description}>
+  <div class="page-header">
+    <h1 class="page-header__title">{series.data.title}</h1>
+    <p class="page-header__lede">{series.data.description}</p>
+  </div>
+
+  <div class="prose">
+    <Content />
+  </div>
+
+  <section class="section">
+    <div class="section__head">
+      <h2 class="section__title">
+        {posts.length} {posts.length === 1 ? 'part' : 'parts'}
+      </h2>
+    </div>
+
+    {posts.length > 0 ? (
+      <ol class="post-list" role="list">
+        {posts.map((post, i) => (
+          <li class="post-card">
+            <a href={urls.post(post)} class="post-card__link">
+              <h3 class="post-card__title">
+                {i + 1}. {post.data.title}
+              </h3>
+              <p class="post-card__desc">{post.data.description}</p>
+            </a>
+            <div class="post-card__meta">
+              <FormattedDate date={post.data.date} />
+              {post.data.draft && <span class="badge badge--draft">Draft</span>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p class="empty-note">No articles in this series yet.</p>
+    )}
+  </section>
+</BaseLayout>

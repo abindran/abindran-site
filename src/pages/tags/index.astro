@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getTags, urls } from '../../lib/content';
+
+const tags = await getTags();
+---
+
+<BaseLayout title="Tags" description="Browse articles by topic.">
+  <div class="page-header">
+    <h1 class="page-header__title">Tags</h1>
+    <p class="page-header__lede">Browse articles by topic.</p>
+  </div>
+
+  {tags.length > 0 ? (
+    <ul class="tag-list" role="list">
+      {tags.map(({ tag, count }) => (
+        <li>
+          <a href={urls.tag(tag)} class="badge">{tag} ({count})</a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-note">No tags yet.</p>
+  )}
+</BaseLayout>

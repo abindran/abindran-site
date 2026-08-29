@@ -23,63 +23,26 @@ Consult these guides before working on related tasks:
 
 ---
 
-# Personal Developer Blog — Project Context & Teaching Contract
+# Personal Developer Blog — Project Context
 
-## 0. Your role — read this before doing anything
+## 0. Working agreement
 
-You are a **teacher and mentor**, not an implementer.
+This began as a learning project with a strict "explain, do not implement" contract. That mode
+was retired once the fundamentals were in place. Current expectations:
 
-**The objective is not to build this blog. The objective is for me to learn how modern web
-applications are designed and built, by building it myself.** A finished blog that I did not
-write is a failed outcome.
-
-### Hard rules
-
-- **Do not write application code for me.** Do not create or edit files in `src/` unless I
-  explicitly ask you to.
-- **Do not use file-editing tools to complete a step on my behalf.** Reading files to review my
-  work is expected and encouraged. Writing them is not.
-- **One meaningful step at a time.** Never give me a 10-step plan to execute. Give me step 1,
-  wait for me to do it, review, then step 2.
-- **Explain the concept before assigning the task.** I should understand *why* before I type.
-- **Explain why, not just how.** Every technical decision needs a rationale I can evaluate.
-- **Challenge my decisions.** Do not accept a bad choice because I proposed it. Push back with
-  reasoning.
+- **Implementation is fine.** Write code, and explain non-obvious decisions as you go.
+- **Explain why, not just how.** Every technical decision needs a rationale that can be evaluated.
+- **Challenge bad decisions.** Do not accept a poor choice just because it was proposed.
 - **Prefer simple, production-quality solutions.** No unnecessary abstractions or dependencies.
-- **Verify current documentation** when a framework, library, or API may have changed. See §7.
+- **Verify current documentation** when a framework, library, or API may have changed. See §7 —
+  this has already caught several wrong assumptions in this repo.
 
-### When I make a mistake
+## 1. Context
 
-1. Tell me what is wrong.
-2. Explain why it is wrong.
-3. Name the concept I misunderstood.
-4. Explain how to recognise the same problem in future.
-5. **Give me a hint and let me attempt the fix** before showing a solution.
-
-### When I share code for review
-
-1. What I did correctly.
-2. What the problems are, and why they are problems.
-3. Hints first.
-4. Solution only if I am still stuck after trying.
-5. The underlying concept.
-
-Do not rewrite my project unless I explicitly ask.
-
-### When I am debugging
-
-Help me diagnose. Do not jump to a fix. The debugging *process* is a large part of what I am
-here to learn — see §7 for two rules that came out of real incidents in this project.
-
----
-
-## 1. Learner profile
-
-- **Well versed in HTML, CSS, and JavaScript.** Do not explain web fundamentals.
-- Comfortable in a terminal; comfortable with git.
-- New to Astro specifically, and to the build-time vs runtime distinction it depends on.
-- Assume familiarity. Explain Astro-specific and architecture-specific concepts properly.
-  Skip the basics. Tell me when I am wrong.
+- Strong on HTML, CSS, and JavaScript. Do not explain web fundamentals.
+- Comfortable in a terminal and with git.
+- Astro-specific behaviour (build-time vs runtime, content layer, islands) is worth calling out
+  explicitly when it drives a decision.
 
 ---
 
@@ -113,10 +76,15 @@ when a reason is genuinely new.
 | Language | **TypeScript, strict** | Its real value here is validating the CMS/content boundary at build time |
 | Content source | **Markdown/MDX files in git**, via Astro Content Collections | See §4 |
 | Hosting | **Cloudflare Workers** with static assets | Unlimited bandwidth on free tier; no overage bill on a traffic spike; Cloudflare's own recommendation for new projects over Pages |
-| Domain | Registered at **Namecheap**, nameservers pointed at Cloudflare | Registrar separate from host — retain control if the host account is ever locked |
+| Domain | **abindran.com** — registered at Namecheap, nameservers pointed at Cloudflare, mapped to the Worker | Registrar separate from host — retain control if the host account is ever locked. Apex is canonical |
 | Search | **Pagefind** (Phase 8, hooks laid in Phase 6) | See §4 |
 | Markdown default | Plain `.md`; `.mdx` only per-article when a component is genuinely needed | MDX turns content into code — slower builds, portability liability as a default |
 | Typecheck gate | `build` script is `astro check && astro build` | `astro build` only transpiles TypeScript, it does not typecheck; without this, a bad prop type built and deployed clean. `&&` means a failed check produces no `dist/` at all |
+| Styling | **SCSS**, hand-written, no framework | A blog is a typography problem with ~8 components. Colour lives in CSS custom properties (runtime-swappable for dark mode); the type scale, spacing, and breakpoints are Sass variables (compile-time only) |
+| URL architecture | **Flat** `/blog/<slug>` | Series membership is page content, not path structure. Moving an article between series, or renaming a series, never breaks a URL. `/series/<slug>` and `/tags/<slug>` exist as their own indexes |
+| Series representation | Its own **content collection**, referenced via `reference('series')` | A series owns metadata (title, description, order) that belongs to no single article. `seriesOrder` gives position; `8 / 15` is computed, never typed by hand |
+| Markdown processor | `unified()` from `@astrojs/markdown-remark` | Astro 7 defaults to Sätteri; remark/rehype plugins require opting back into unified explicitly. Needed for reading-time and heading anchors |
+| Dark mode | `prefers-color-scheme` only, no toggle | No JS, no flash-of-wrong-theme, no persistence layer. Revisit only if a toggle is actually wanted |
 
 ### Rejected, with reasons
 
@@ -210,19 +178,16 @@ place. Otherwise Pagefind's prebuilt UI is fine and the site ships with no frame
 
 ## 5. Open decisions — do NOT pre-empt
 
-- **React.** Not installed. Decision deferred to Phase 8. Copy-code button, theme toggle, TOC
-  scroll-spy, and search all work without it. Introduce it only for a component that genuinely
-  needs stateful interaction, as a single island. Possibly never.
-- **Styling approach.** Tailwind is likely, plus my own small component set, plus Radix
-  primitives only if a genuinely hard a11y problem appears (dialog, combobox). Decide properly in
-  Phase 5 — verify the current Tailwind version and Astro install path at that time.
-- **Content model and taxonomy.** Categories vs topics vs tags vs series, and how series is
-  represented. Phase 4. Must not abuse tags to represent a series.
-- **URL architecture.** Phase 4. Must be stable, human-readable, and independent enough of the
-  content source that changing it later is not painful. Also decide `example.com` vs
-  `www.example.com` as canonical and redirect the other — both resolving independently splits
-  SEO.
-- **Linting/formatting.** Any reasonable choice. Set up before there is much code.
+- **React.** Not installed, and nothing so far has needed it. Copy-code button, theme toggle, and
+  TOC scroll-spy all work without it. Introduce it only for a component that genuinely needs
+  stateful interaction, as a single island. Possibly never.
+- **Radix primitives.** Only if a genuinely hard a11y problem appears (dialog, combobox).
+- **Search.** Pagefind, planned. `data-pagefind-body` / `data-pagefind-ignore` attributes are not
+  yet added to the article layout — see §4.
+- **Linting/formatting.** Still unset. Worth doing before the codebase grows further.
+- **`www` redirect.** `abindran.com` is canonical. If `www.abindran.com` also resolves, it must
+  301 to the apex — both resolving independently splits SEO. Configure as a Cloudflare redirect
+  rule; nothing in this repo can enforce it.
 
 ---
 
@@ -232,38 +197,59 @@ place. Otherwise Pagefind's prebuilt UI is fine and the site ships with no frame
 Phase 0   Decisions locked                           ✅ DONE
 Phase 1   Environment + DEPLOYED skeleton            ✅ DONE
 Phase 2   Astro fundamentals                         ✅ DONE
-Phase 3   Content layer: collections, Zod, Markdown  ← CURRENT (the architectural core)
-Phase 4   Content model + URL architecture
-Phase 5   Styling & typography
-Phase 6   Article experience: Shiki, TOC, reading time, prev/next, series progress
-Phase 7   SEO & platform: RSS, sitemap, OG, canonical, structured data
-Phase 8   Interactivity: islands, Pagefind, React only if earned
+Phase 3   Content layer: collections, Zod, Markdown  ✅ DONE
+Phase 4   Content model + URL architecture           ✅ DONE
+Phase 5   Styling & typography                       ✅ DONE
+Phase 6   Article experience                         ✅ MOSTLY (no TOC)
+Phase 7   SEO & platform                             ✅ DONE
+Phase 8   Interactivity: islands, Pagefind           ← NEXT
 Phase 9   Editing UI — optional
 Phase 10  Performance & accessibility audit, polish
 ```
 
 **MVP = Phases 1–7.** Comments, related articles, and interactive demos are Version 2 or later.
 
-### Done so far
+### Infrastructure
 
 - Node 22.22, pnpm 11.24.0, both pinned in the repo
-- `.node-version` committed with the correct filename (`.node_version`, no hyphen, was a typo
-  that meant nothing on the build machine actually read it — fixed and pushed)
-- `pnpm-workspace.yaml` holds only `allowBuilds` (`esbuild`, `sharp`) — no `packages:` key, and no
-  duplicate `allowScripts` key in `package.json` (that key had zero effect; confirmed absent from
-  pnpm's resolved state in `node_modules/.modules.yaml` before removing it)
-- Astro 7 project scaffolded, TypeScript strict, minimal template, no extra integrations
-- `BaseLayout.astro` built: full document, `<nav>`, `<slot />`, typed `Props` interface for
-  `title`
-- `index.astro` and `about.astro` both use the layout
-- `@astrojs/check` and `typescript` added as devDependencies; `build` script is
-  `astro check && astro build` (see §3)
-- Repo pushed to GitHub
-- Cloudflare Workers deploy green on the `.workers.dev` URL, rebuilding on push
-- `wrangler.jsonc` committed
+- `.node-version` with the correct filename (`.node_version`, no hyphen, was a typo that meant
+  nothing on the build machine actually read it)
+- `pnpm-workspace.yaml` holds only `allowBuilds` — no `packages:` key. `@parcel/watcher` is
+  explicitly denied (`false`) rather than left undecided; it is a native watcher pulled in by
+  sass that only sass's own `--watch` uses, and leaving it unresolved makes `pnpm install` exit 1
+- `build` script is `astro check && astro build`; verified by deliberately breaking a prop type
+  and watching the build fail with exit code 1 before `astro build` ran
+- Cloudflare Workers deploy on push; `wrangler.jsonc` committed
 
-Domain is not yet attached. Do that only when I ask, and after the `.workers.dev` URL is confirmed
-working.
+### Architecture as built
+
+- `src/content.config.ts` — two collections, `blog` and `series`. `blog` uses `.refine()` so
+  `series` and `seriesOrder` must be set together or not at all
+- `src/lib/content.ts` — the domain layer. All queries, sorting, series resolution, tag counting,
+  and URL construction live here. **Pages never call `getCollection()` directly.** Swapping the
+  loader would touch only this file and `content.config.ts`
+- `src/lib/reading-time.mjs` — remark plugin; writes `readingTime` into frontmatter at build time
+- `src/styles/` — `_tokens.scss` (colour custom properties + Sass scale), `_reset.scss`,
+  `_prose.scss` (long-form typography, Shiki dual-theme switching), `global.scss`
+- `src/components/` — `Header`, `Footer`, `PostCard`, `SeriesBox`, `Pager`, `FormattedDate`
+- Routes: `/`, `/blog`, `/blog/<slug>`, `/series`, `/series/<slug>`, `/tags`, `/tags/<slug>`,
+  `/about`, `/404`, `/rss.xml`, `/sitemap-index.xml`
+
+### Content authoring
+
+Frontmatter fields on a blog post: `title`, `description` (both required), `date`, optional
+`updated`, `tags` (defaults `[]`), `draft` (defaults `false`), and optionally `series` +
+`seriesOrder` together.
+
+Dates must be **unquoted** in YAML (`date: 2026-08-29`). `z.coerce.date()` accepts quoted strings
+too, but unquoted is the intended form — see §7.
+
+Drafts are visible in `astro dev` and excluded from production builds and RSS.
+
+`abindran.com` is live and mapped to the Worker. The domain appears in three files that must
+always agree — `src/consts.ts` (`SITE.url`), `astro.config.mjs` (`site`), and
+`public/robots.txt` (sitemap line). A mismatch silently produces wrong canonicals, sitemap
+entries, and RSS links, and nothing in the build catches it.
 
 ---
 
@@ -286,8 +272,39 @@ A corollary that applies to tooling recommendations: **"free and best" is a clai
 timestamp.** Product landscapes move. Verify before recommending. (Corepack, currently used to
 pin pnpm, is being removed from Node — fine on Node 22, will need replacing around Node 26.)
 
+**3. A tool's success message describes intent; its state file describes what happened.**
+`pnpm install` printing "Already up to date" did not prove a workspace config edit was honoured —
+reading `node_modules/.modules.yaml` did. Prefer the state file when the two could disagree.
+
+### Version-specific gotchas already hit in this repo
+
+- **YAML types are upstream of Zod.** `date: 2026-08-29` parses to a `Date`; `date: "2026-08-29"`
+  parses to a `string`, and `z.date()` rejects it. Zod validates the type YAML produced — it does
+  not parse text. `z.coerce.date()` converts first, which is why it is used here.
+- **Astro 7 changed the default Markdown processor** to Sätteri. `markdown.remarkPlugins` and
+  `markdown.rehypePlugins` are deprecated and require `@astrojs/markdown-remark`; pass plugins to
+  `unified({...})` via `markdown.processor` instead.
+- **`import { z } from 'astro:content'` is deprecated** in Astro 7 and removed in Astro 8. Use
+  `astro/zod`.
+- **`export const getStaticPaths: GetStaticPaths = ...` does not infer prop types.** Use
+  `(async () => {...}) satisfies GetStaticPaths` plus
+  `InferGetStaticPropsType<typeof getStaticPaths>`, or every `Astro.props` field is `unknown`.
+- **`key` is not a valid attribute in `.astro` templates.** There is no client-side reconciliation
+  step, so there is nothing for a key to identify. `astro check` rejects it on native elements.
+
 ---
 
 ## 8. Immediate next step
 
-Phase 3 is current. No task has been assigned yet.
+Phase 8. Nothing is in progress.
+
+Known follow-ups, roughly in order of value:
+
+1. **Pagefind search.** Add `data-pagefind-body` to the article element and `data-pagefind-ignore`
+   to nav/footer/tag lists, then `astro build && pagefind --site dist`.
+2. **Table of contents.** `render()` returns `headings`; the CSS for heading anchors already
+   exists. No JS needed unless scroll-spy is wanted.
+3. **OG images.** No `og:image` is emitted, so link previews are bare text.
+4. **Linting/formatting.** Still unset (§5).
+5. **Real content.** `src/content/blog/` currently holds three sample posts and one sample series;
+   all are placeholder writing and should be replaced.

@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPosts } from '../../lib/content';
+
+const posts = await getPosts();
+---
+
+<BaseLayout
+  title="Writing"
+  description="Every article, newest first."
+>
+  <div class="page-header">
+    <h1 class="page-header__title">Writing</h1>
+    <p class="page-header__lede">
+      {posts.length} {posts.length === 1 ? 'article' : 'articles'}, newest first.
+    </p>
+  </div>
+
+  {posts.length > 0 ? (
+    <ul class="post-list" role="list">
+      {posts.map((post) => (
+        <li><PostCard post={post} /></li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-note">Nothing published yet.</p>
+  )}
+</BaseLayout>

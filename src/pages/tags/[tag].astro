@@ -1,0 +1,40 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getTags, getPostsByTag, tagSlug } from '../../lib/content';
+
+export const getStaticPaths = (async () => {
+  const tags = await getTags();
+  return Promise.all(
+    tags.map(async ({ tag }) => ({
+      // Shares tagSlug() with urls.tag(), so route and links cannot drift.
+      params: { tag: tagSlug(tag) },
+      props: { tag, posts: await getPostsByTag(tag) },
+    })),
+  );
+}) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+
+const { tag, posts } = Astro.props as Props;
+---
+
+<BaseLayout
+  title={`Tagged “${tag}”`}
+  description={`Articles tagged ${tag}.`}
+>
+  <div class="page-header">
+    <h1 class="page-header__title">#{tag}</h1>
+    <p class="page-header__lede">
+      {posts.length} {posts.length === 1 ? 'article' : 'articles'}.
+      <a href="/tags">All tags</a>
+    </p>
+  </div>
+
+  <ul class="post-list" role="list">
+    {posts.map((post) => (
+      <li><PostCard post={post} /></li>
+    ))}
+  </ul>
+</BaseLayout>

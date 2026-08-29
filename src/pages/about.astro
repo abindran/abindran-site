@@ -1,8 +1,28 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../consts';
 ---
 
-<BaseLayout title="About">
-  <h1>About</h1>
-  <p>This is the about page.</p>
+<BaseLayout
+  title="About"
+  description={`About ${SITE.author}.`}
+>
+  <div class="page-header">
+    <h1 class="page-header__title">About</h1>
+  </div>
+
+  <div class="prose">
+    <p>
+      I write about systems programming, web architecture, and the parts of
+      software that only make sense once you have broken them yourself.
+    </p>
+    <p>
+      This site is built with Astro, deployed to Cloudflare, and written in
+      Markdown kept in git. There is no CMS and no database — which means there
+      is nothing to go down, and nothing to migrate away from.
+    </p>
+    <p>
+      You can subscribe via <a href="/rss.xml">RSS</a>.
+    </p>
+  </div>
 </BaseLayout>

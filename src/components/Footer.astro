@@ -1,0 +1,17 @@
+---
+import { SITE } from '../consts';
+import Icon from './Icon.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="layout site-footer__inner">
+    <span>© {year} {SITE.author}</span>
+
+    <a href="/rss.xml" class="icon-link" title="RSS feed">
+      <Icon name="rss" badge />
+      <span>RSS</span>
+    </a>
+  </div>
+</footer>

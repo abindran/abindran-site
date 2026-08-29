@@ -1,0 +1,40 @@
+---
+import type { Post, Series } from '../lib/content';
+import { urls } from '../lib/content';
+
+interface Props {
+  series: Series;
+  posts: Post[];
+  currentId: string;
+  position: number;
+  total: number;
+}
+
+const { series, posts, currentId, position, total } = Astro.props;
+---
+
+<aside class="series-box" aria-label="Series navigation">
+  <div class="series-box__head">
+    <span class="series-box__label">Part of a series</span>
+    <span class="series-box__progress">{position} / {total}</span>
+  </div>
+
+  <h2 class="series-box__title">
+    <a href={urls.series(series)}>{series.data.title}</a>
+  </h2>
+
+  <ol class="series-box__list">
+    {posts.map((post) => {
+      const current = post.id === currentId;
+      return (
+        <li class:list={['series-box__item', current && 'series-box__item--current']}>
+          {current ? (
+            <span aria-current="true">{post.data.title}</span>
+          ) : (
+            <a href={urls.post(post)}>{post.data.title}</a>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</aside>

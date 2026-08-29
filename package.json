@@ -12,11 +12,18 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/markdown-remark": "^7.2.4",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.3",
     "astro": "^7.2.9"
   },
   "packageManager": "pnpm@11.24.0+sha512.bd27e345e976dcb0be0b7a1228217b049a817e21b1f355c90dbe7dc46671895a8bc1e6d06c24554505ea93ea0b45f489a27ec1bfbc8de6a9659fca0f16fa0000",
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "mdast-util-to-string": "^4.0.0",
+    "reading-time": "^1.5.0",
+    "rehype-autolink-headings": "^7.1.0",
+    "sass": "^1.103.1",
     "typescript": "^5.9.2"
   }
 }

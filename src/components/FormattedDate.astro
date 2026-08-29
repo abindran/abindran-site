@@ -1,0 +1,19 @@
+---
+interface Props {
+  date: Date;
+  class?: string;
+}
+
+const { date, class: className } = Astro.props;
+
+// Format in UTC. The frontmatter value is a date-only literal parsed as UTC
+// midnight, so rendering it in any other zone can shift it a calendar day.
+const formatted = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+}).format(date);
+---
+
+<time datetime={date.toISOString()} class={className}>{formatted}</time>
