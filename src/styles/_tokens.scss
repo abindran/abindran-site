@@ -5,30 +5,12 @@
 // duplicating every rule that consumes them. Sass variables are used for values
 // that never change at runtime: the type scale, spacing, breakpoints.
 
+// Dark is the default. The site is dark-first, so the base :root declarations
+// are the dark ones and light is opt-in via [data-theme='light'].
+//
+// Note this deliberately does NOT consult prefers-color-scheme: a reader on a
+// light-mode OS still gets dark until they choose otherwise.
 :root {
-  // Neutrals — warm greys, slightly off-pure to avoid harsh contrast.
-  --bg: #fdfdfc;
-  --bg-subtle: #f4f4f1;
-  --bg-code: #f6f6f4;
-  --border: #e3e3de;
-  --border-strong: #cfcfc8;
-
-  --text: #22221f;
-  --text-muted: #6b6b63;
-  --text-faint: #91918a;
-
-  --accent: #9a3412;
-  --accent-hover: #7c2d12;
-  --accent-subtle: #fdf3ee;
-
-  --selection: #f7dcc9;
-
-  color-scheme: light;
-}
-
-// Dark values, defined once and applied from two places: the system preference
-// (when the reader has expressed no choice) and an explicit [data-theme].
-@mixin dark-tokens {
   --bg: #161614;
   --bg-subtle: #1e1e1b;
   --bg-code: #1c1c19;
@@ -48,13 +30,26 @@
   color-scheme: dark;
 }
 
-// System preference — but only while the reader has not chosen light explicitly.
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) { @include dark-tokens; }
-}
+:root[data-theme='light'] {
+  // Neutrals — warm greys, slightly off-pure to avoid harsh contrast.
+  --bg: #fdfdfc;
+  --bg-subtle: #f4f4f1;
+  --bg-code: #f6f6f4;
+  --border: #e3e3de;
+  --border-strong: #cfcfc8;
 
-// Explicit choice always wins, in either direction.
-:root[data-theme='dark'] { @include dark-tokens; }
+  --text: #22221f;
+  --text-muted: #6b6b63;
+  --text-faint: #91918a;
+
+  --accent: #9a3412;
+  --accent-hover: #7c2d12;
+  --accent-subtle: #fdf3ee;
+
+  --selection: #f7dcc9;
+
+  color-scheme: light;
+}
 
 // Type scale — 1.200 (minor third), rounded to sensible rem values.
 $text-xs:   0.75rem;

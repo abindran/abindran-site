@@ -5,6 +5,8 @@ date: 2026-08-20
 series: c-programming
 seriesOrder: 1
 tags: ["c", "memory", "systems"]
+cover: ../../assets/covers/c-memory-model.png
+coverAlt: "Abstract warm-toned gradient with concentric rings"
 ---
 
 Before pointers make any sense, you need a mental model of where things live. C gives you three storage durations, and almost every confusing bug in a beginner C program comes from misunderstanding which one you are in.

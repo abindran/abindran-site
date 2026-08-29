@@ -16,41 +16,39 @@ import Icon from './Icon.astro';
   const root = document.documentElement;
   const button = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
   const label = document.querySelector<HTMLElement>('[data-theme-label]');
+  const favicon = document.querySelector<HTMLLinkElement>('[data-favicon]');
 
-  const systemPrefersDark = () =>
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // Dark is the default, so anything that is not an explicit light choice is
+  // dark. The system preference is deliberately not consulted.
+  const currentTheme = (): 'light' | 'dark' =>
+    root.dataset.theme === 'light' ? 'light' : 'dark';
 
-  /** What is actually on screen right now. */
-  const currentTheme = (): 'light' | 'dark' => {
-    const explicit = root.dataset.theme;
-    if (explicit === 'light' || explicit === 'dark') return explicit;
-    return systemPrefersDark() ? 'dark' : 'light';
-  };
-
-  const describe = () => {
-    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  const sync = () => {
+    const now = currentTheme();
+    const next = now === 'dark' ? 'light' : 'dark';
     const text = `Switch to ${next} theme`;
     button?.setAttribute('aria-label', text);
     if (label) label.textContent = text;
+
+    // Favicon cannot follow an in-page toggle via CSS, so swap it here. The
+    // 'dark' file is the light-coloured mark, i.e. the one for dark backgrounds.
+    if (favicon) {
+      favicon.href = now === 'dark' ? '/dark-favicon-32.png' : '/light-favicon-32.png';
+    }
   };
 
   button?.addEventListener('click', () => {
     const next = currentTheme() === 'dark' ? 'light' : 'dark';
-    root.dataset.theme = next;
+    if (next === 'light') root.dataset.theme = 'light';
+    else delete root.dataset.theme;
+
     try {
       localStorage.setItem('theme', next);
     } catch {
       // Private mode or storage disabled: the choice simply will not persist.
     }
-    describe();
+    sync();
   });
 
-  // Follow the system while the reader has expressed no explicit preference.
-  window
-    .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', () => {
-      if (!root.dataset.theme) describe();
-    });
-
-  describe();
+  sync();
 </script>

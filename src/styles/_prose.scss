@@ -326,13 +326,13 @@
 }
 
 
-// Shiki dual-theme switching. Shiki emits light colours inline and dark ones as
-// CSS custom properties; this swaps them. !important is required because Shiki
-// writes the light colour as an inline style.
+// Shiki dual-theme switching. Shiki writes the light colours as inline styles
+// and the dark ones as CSS custom properties, so dark needs an !important
+// override and light needs simply not to get one.
 //
-// Mirrors the light/dark resolution in _tokens.scss: system preference unless
-// the reader has explicitly chosen.
-@mixin shiki-dark {
+// Applied everywhere EXCEPT explicit light, matching the dark-by-default rule
+// in _tokens.scss.
+:root:not([data-theme='light']) {
   .prose .astro-code,
   .prose .astro-code span {
     color: var(--shiki-dark) !important;
@@ -342,9 +342,3 @@
     text-decoration: var(--shiki-dark-text-decoration) !important;
   }
 }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) { @include shiki-dark; }
-}
-
-:root[data-theme='dark'] { @include shiki-dark; }

@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
+import { Image } from 'astro:assets';
 import { getPosts, getAllSeries, urls } from '../lib/content';
 import { SITE } from '../consts';
 
@@ -40,10 +41,24 @@ const series = (await getAllSeries()).filter((s) => s.posts.length > 0);
 
       <ul class="post-list" role="list">
         {series.map(({ series: s, posts: p }) => (
-          <li class="post-card">
+          <li class:list={['post-card', s.data.cover && 'post-card--with-cover']}>
             <a href={urls.series(s)} class="post-card__link">
-              <h3 class="post-card__title">{s.data.title}</h3>
-              <p class="post-card__desc">{s.data.description}</p>
+              {s.data.cover && (
+                <div class="post-card__media">
+                  <Image
+                    src={s.data.cover}
+                    alt={s.data.coverAlt ?? ''}
+                    widths={[240, 480]}
+                    sizes="(min-width: 40rem) 12rem, 100vw"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              )}
+              <div class="post-card__body">
+                <h3 class="post-card__title">{s.data.title}</h3>
+                <p class="post-card__desc">{s.data.description}</p>
+              </div>
             </a>
             <div class="post-card__meta">
               {p.length} {p.length === 1 ? 'part' : 'parts'}

@@ -310,6 +310,37 @@ code {
     font-size: $text-sm;
     color: var(--text-faint);
   }
+
+  // With a cover, the card becomes thumbnail + text side by side. The image is
+  // given an explicit aspect-ratio so the row does not reflow once it loads.
+  &--with-cover &__link {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: $space-6;
+    align-items: start;
+
+    @include below($bp-sm) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: $space-3;
+    }
+  }
+
+  &__media {
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+
+    img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1200 / 630;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &__link:hover &__media { border-color: var(--border-strong); }
 }
 
 .meta-dot::before {
@@ -359,20 +390,14 @@ code {
     position: absolute;
   }
 
-  // Show the icon for the theme the button switches *to*.
-  &__icon--sun { display: none; }
-  &__icon--moon { display: block; }
+  // Show the icon for the theme the button switches *to*. Dark is the default,
+  // so the sun (meaning "go light") is the default icon.
+  &__icon--sun { display: block; }
+  &__icon--moon { display: none; }
 
-  :root[data-theme='dark'] & {
-    .theme-toggle__icon--sun { display: block; }
-    .theme-toggle__icon--moon { display: none; }
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) & {
-      .theme-toggle__icon--sun { display: block; }
-      .theme-toggle__icon--moon { display: none; }
-    }
+  :root[data-theme='light'] & {
+    .theme-toggle__icon--sun { display: none; }
+    .theme-toggle__icon--moon { display: block; }
   }
 }
 
@@ -473,6 +498,24 @@ code {
   &:hover {
     background: var(--accent-hover);
     color: var(--bg);
+  }
+}
+
+// ---------------------------------------------------------------- covers
+
+.article__cover {
+  margin: 0 0 $space-8;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+
+  img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1200 / 630;
+    object-fit: cover;
+    display: block;
   }
 }
 

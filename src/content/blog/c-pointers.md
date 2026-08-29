@@ -5,6 +5,8 @@ date: 2026-08-24
 series: c-programming
 seriesOrder: 2
 tags: ["c", "pointers", "systems"]
+cover: ../../assets/covers/c-pointers.png
+coverAlt: "Abstract cool-toned gradient with concentric rings"
 ---
 
 Pointers have a reputation they do not deserve. The concept is simple: a pointer is a variable whose value is the address of another object. The difficulty is almost entirely in C's declaration syntax, which reads inside-out and was a mistake.
