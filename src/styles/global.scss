@@ -39,6 +39,87 @@ code {
   @include below($bp-sm) { padding-inline: $space-4; }
 }
 
+.layout--wide {
+  max-width: $wide-width;
+}
+
+// Article + TOC rail. Below the breakpoint the rail moves above the prose and
+// collapses; above it, the rail sits alongside and sticks while scrolling.
+.article-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: $space-8;
+
+  @media (min-width: $bp-toc) {
+    grid-template-columns: minmax(0, $content-width) $rail-width;
+    gap: $rail-gap;
+    justify-content: center;
+    align-items: start;
+  }
+
+  &__main { min-width: 0; }
+
+  &__rail {
+    order: -1;                       // above the article on narrow screens
+
+    @media (min-width: $bp-toc) {
+      order: 0;
+      position: sticky;
+      top: $space-8;
+      max-height: calc(100vh - #{$space-16});
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+  }
+}
+
+.toc {
+  font-size: $text-sm;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: $space-4 $space-6;
+
+  @media (min-width: $bp-toc) {
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    padding: $space-1 0 $space-1 $space-6;
+  }
+
+  &__title {
+    font-size: $text-xs;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: $space-3;
+  }
+
+  &__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  &__item--sub { padding-left: $space-4; }
+
+  &__link {
+    display: block;
+    padding: 0.15rem 0;
+    color: var(--text-muted);
+    text-decoration: none;
+    line-height: 1.45;
+
+    &:hover { color: var(--accent); }
+
+    &[aria-current='true'] {
+      color: var(--accent);
+      font-weight: 600;
+    }
+  }
+}
+
 .site-main {
   flex: 1;
   width: 100%;
@@ -264,6 +345,54 @@ code {
             text-underline-offset: 0.2em; }
 }
 
+// ---------------------------------------------------------------- social
+
+.social-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: $space-1 $space-6;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-3 0;
+  text-decoration: none;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+
+  &:hover {
+    color: var(--accent);
+
+    .social-link__handle { color: var(--accent); }
+  }
+
+  &__icon {
+    width: 1.15em;
+    height: 1.15em;
+    color: var(--text-faint);
+  }
+
+  &:hover &__icon { color: var(--accent); }
+
+  &__name {
+    font-weight: 550;
+    font-size: $text-sm;
+  }
+
+  &__handle {
+    margin-left: auto;
+    font-size: $text-sm;
+    color: var(--text-faint);
+    // Long handles (an email address) must not push the layout wider.
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 // ---------------------------------------------------------------- button
 
 .button {
@@ -320,6 +449,9 @@ code {
 
 .section {
   & + & { margin-top: $space-16; }
+
+  // First section after article prose still needs separation.
+  .prose + & { margin-top: $space-16; }
 
   &__head {
     display: flex;

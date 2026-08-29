@@ -13,6 +13,8 @@ interface Props {
   modifiedTime?: Date;
   /** Suppress the site-name suffix (used on the homepage). */
   bareTitle?: boolean;
+  /** Wider shell, so the article page can put a TOC rail beside the prose. */
+  wide?: boolean;
 }
 
 const {
@@ -22,6 +24,7 @@ const {
   publishedTime,
   modifiedTime,
   bareTitle = false,
+  wide = false,
 } = Astro.props;
 
 const pageTitle = bareTitle ? title : `${title} — ${SITE.title}`;
@@ -87,7 +90,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? SITE.url).href;
     <Header />
 
     <main id="main" class="site-main">
-      <div class="layout">
+      <div class:list={['layout', wide && 'layout--wide']}>
         <slot />
       </div>
     </main>

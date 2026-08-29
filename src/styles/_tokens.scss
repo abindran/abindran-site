@@ -69,9 +69,22 @@ $space-16: 4rem;
 $space-24: 6rem;
 
 // Layout
-$measure: 68ch;      // optimal line length for long-form reading
-$content-width: 44rem;
-$wide-width: 60rem;
+// Upper bound on line length. Kept slightly above what $content-width yields,
+// so the container is what actually binds — otherwise widening the container
+// has no visible effect on body text and only the header/series box grow.
+$measure: 74ch;
+$content-width: 48rem;
+$rail-width: 15rem;  // table-of-contents column
+$rail-gap: $space-12;
+
+// Wide shell must fit content + gap + rail + its own padding, or the grid
+// silently steals width from the content column:
+//   48rem + 3rem + 15rem + 3rem = 69rem
+$wide-width: 70rem;
+
+// Two-column article layout. Above $wide-width so the shell never sits flush
+// against the viewport edge.
+$bp-toc: 74rem;
 
 // Breakpoints
 $bp-sm: 40rem;

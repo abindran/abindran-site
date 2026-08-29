@@ -1,0 +1,83 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+
+// h2/h3 only. h1 is the article title; h4+ makes the list noisier than the
+// article it summarises.
+const items = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{items.length >= 3 && (
+  <nav class="toc" aria-labelledby="toc-heading">
+    <h2 class="toc__title" id="toc-heading">On this page</h2>
+    <ol class="toc__list" role="list">
+      {items.map((h) => (
+        <li class:list={['toc__item', h.depth === 3 && 'toc__item--sub']}>
+          <a href={`#${h.slug}`} class="toc__link" data-toc-link={h.slug}>
+            {h.text}
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}
+
+<script>
+  // Scroll-spy. Progressive enhancement: with JS off the TOC is still a working
+  // list of anchor links, just without the current-section highlight.
+  //
+  // Computed from scroll position rather than IntersectionObserver: an observer
+  // only fires when intersection *changes*, so any scroll that does not push a
+  // heading across the observed band leaves the highlight stale.
+  const links = new Map<string, HTMLAnchorElement>();
+  document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]').forEach((a) => {
+    links.set(a.dataset.tocLink!, a);
+  });
+
+  if (links.size > 0) {
+    const headings = [...links.keys()]
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    let active: HTMLAnchorElement | null = null;
+
+    const update = () => {
+      // The heading being read is the last one whose top has passed the line a
+      // quarter down the viewport.
+      const line = window.innerHeight * 0.25;
+      let current = headings[0];
+      for (const h of headings) {
+        if (h.getBoundingClientRect().top <= line) current = h;
+        else break;
+      }
+
+      // At the very bottom the last section may never reach the line.
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.body.scrollHeight - 2;
+      if (atBottom) current = headings[headings.length - 1];
+
+      const next = links.get(current.id);
+      if (!next || next === active) return;
+      active?.removeAttribute('aria-current');
+      next.setAttribute('aria-current', 'true');
+      active = next;
+    };
+
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        update();
+      });
+    };
+
+    addEventListener('scroll', onScroll, { passive: true });
+    addEventListener('resize', onScroll, { passive: true });
+    update();
+  }
+</script>

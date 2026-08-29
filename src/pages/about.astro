@@ -1,12 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE } from '../consts';
+import Icon from '../components/Icon.astro';
+import type { IconName } from '../components/Icon.astro';
+import { SITE, SOCIAL_LINKS } from '../consts';
 ---
 
-<BaseLayout
-  title="About"
-  description={`About ${SITE.author}.`}
->
+<BaseLayout title="About" description={`About ${SITE.author}.`}>
   <div class="page-header">
     <h1 class="page-header__title">About</h1>
   </div>
@@ -25,4 +24,30 @@ import { SITE } from '../consts';
       You can subscribe via <a href="/rss.xml">RSS</a>.
     </p>
   </div>
+
+  <section class="section">
+    <div class="section__head">
+      <h2 class="section__title">Elsewhere</h2>
+    </div>
+
+    <ul class="social-list" role="list">
+      {SOCIAL_LINKS.map((link) => {
+        const external = !link.href.startsWith('mailto:');
+        return (
+          <li>
+            <a
+              href={link.href}
+              class="social-link"
+              rel={external ? 'me noopener noreferrer' : 'me'}
+              target={external ? '_blank' : undefined}
+            >
+              <Icon name={link.icon as IconName} class="social-link__icon" />
+              <span class="social-link__name">{link.name}</span>
+              <span class="social-link__handle">{link.handle}</span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  </section>
 </BaseLayout>

@@ -1,35 +1,58 @@
 ---
 // Inline SVG icons.
 //
-// Two kinds:
-//   - Stroke icons: monochrome, inherit currentColor, take the colour of
-//     surrounding text for free. Add one by adding an entry to ICONS.
-//   - Badge icons: fixed brand colours and their own background (the classic
-//     RSS feed mark). These deliberately ignore currentColor.
+// An icon is a list of shapes — path, circle, or rect — on a 24x24 grid.
+// Everything is stroked with currentColor, so icons take the colour of the
+// text beside them and need no per-context styling. `fill: true` marks a shape
+// that should be solid instead (dots, small accents).
 //
-// Sized in em so an icon always matches the text beside it.
+// The RSS badge is the one exception: it carries the canonical feed colours and
+// deliberately ignores currentColor. See the `badge` prop.
+
+type Shape = {
+  d?: string;
+  circle?: [number, number, number];        // cx, cy, r
+  rect?: [number, number, number, number, number?]; // x, y, w, h, rx
+  fill?: boolean;
+};
 
 const ICONS = {
-  rss: ['M4 11a9 9 0 0 1 9 9', 'M4 4a16 16 0 0 1 16 16'],
-  github: [
-    'M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22',
+  rss: [
+    { d: 'M4 11a9 9 0 0 1 9 9' },
+    { d: 'M4 4a16 16 0 0 1 16 16' },
+    { circle: [5, 19, 1], fill: true },
   ],
-  mail: ['M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z', 'm22 6-10 7L2 6'],
-} as const;
-
-/** Icons drawn with a filled dot in addition to their stroked paths. */
-const DOTS: Partial<Record<keyof typeof ICONS, [number, number, number]>> = {
-  rss: [5, 19, 1],
-};
+  mail: [
+    { d: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z' },
+    { d: 'm22 6-10 7L2 6' },
+  ],
+  github: [
+    { d: 'M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22' },
+  ],
+  linkedin: [
+    { d: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4V8.5h4V10' },
+    { rect: [2, 9, 4, 12] },
+    { circle: [4, 4, 2] },
+  ],
+  instagram: [
+    { rect: [2, 2, 20, 20, 5] },
+    { circle: [12, 12, 4] },
+    { circle: [17.5, 6.5, 0.6], fill: true },
+  ],
+  // Approximation of the LeetCode mark: an angular hook, its crossbar, and the
+  // detached upper stroke. Not the official logo, but reads as it at 16px.
+  leetcode: [
+    { d: 'M13.5 3.5 6.6 10.6a4 4 0 0 0 0 5.7l3.3 3.3a4 4 0 0 0 5.7 0l1.9-1.9' },
+    { d: 'M10.4 13.4H20' },
+    { d: 'm16.2 6.2-2.7-2.7' },
+  ],
+} satisfies Record<string, Shape[]>;
 
 export type IconName = keyof typeof ICONS;
 
 interface Props {
   name: IconName;
-  /**
-   * Render the standard feed mark: white waves on the canonical RSS orange.
-   * Only meaningful for `rss`.
-   */
+  /** Render the standard feed mark: white waves on the canonical RSS orange. */
   badge?: boolean;
   /** Accessible label. Omit for decorative icons sitting beside visible text. */
   label?: string;
@@ -37,9 +60,7 @@ interface Props {
 }
 
 const { name, badge = false, label, class: className } = Astro.props;
-
-const paths = ICONS[name];
-const dot = DOTS[name];
+const shapes: Shape[] = ICONS[name];
 
 const a11y = {
   'aria-hidden': label ? undefined : ('true' as const),
@@ -49,26 +70,11 @@ const a11y = {
 ---
 
 {badge && name === 'rss' ? (
-  <svg
-    class:list={['icon', 'icon--badge', className]}
-    viewBox="0 0 24 24"
-    fill="none"
-    {...a11y}
-  >
+  <svg class:list={['icon', 'icon--badge', className]} viewBox="0 0 24 24" fill="none" {...a11y}>
     <rect width="24" height="24" rx="5" fill="#FF6600" />
     <circle cx="6.6" cy="17.4" r="2.1" fill="#fff" />
-    <path
-      d="M4.5 12.5a7 7 0 0 1 7 7"
-      stroke="#fff"
-      stroke-width="2.6"
-      stroke-linecap="round"
-    />
-    <path
-      d="M4.5 7a12.5 12.5 0 0 1 12.5 12.5"
-      stroke="#fff"
-      stroke-width="2.6"
-      stroke-linecap="round"
-    />
+    <path d="M4.5 12.5a7 7 0 0 1 7 7" stroke="#fff" stroke-width="2.6" stroke-linecap="round" />
+    <path d="M4.5 7a12.5 12.5 0 0 1 12.5 12.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" />
   </svg>
 ) : (
   <svg
@@ -81,7 +87,26 @@ const a11y = {
     stroke-linejoin="round"
     {...a11y}
   >
-    {paths.map((d) => <path d={d} />)}
-    {dot && <circle cx={dot[0]} cy={dot[1]} r={dot[2]} fill="currentColor" stroke="none" />}
+    {shapes.map((s) =>
+      s.d ? (
+        <path d={s.d} fill={s.fill ? 'currentColor' : undefined} stroke={s.fill ? 'none' : undefined} />
+      ) : s.circle ? (
+        <circle
+          cx={s.circle[0]}
+          cy={s.circle[1]}
+          r={s.circle[2]}
+          fill={s.fill ? 'currentColor' : undefined}
+          stroke={s.fill ? 'none' : undefined}
+        />
+      ) : s.rect ? (
+        <rect
+          x={s.rect[0]}
+          y={s.rect[1]}
+          width={s.rect[2]}
+          height={s.rect[3]}
+          rx={s.rect[4]}
+        />
+      ) : null,
+    )}
   </svg>
 )}

@@ -5,6 +5,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import SeriesBox from '../../components/SeriesBox.astro';
 import Pager from '../../components/Pager.astro';
+import TableOfContents from '../../components/TableOfContents.astro';
 import { getPosts, getSeriesContext, urls } from '../../lib/content';
 
 export const getStaticPaths = (async () => {
@@ -18,7 +19,7 @@ export const getStaticPaths = (async () => {
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 
 const { post } = Astro.props as Props;
-const { Content, remarkPluginFrontmatter } = await render(post);
+const { Content, headings, remarkPluginFrontmatter } = await render(post);
 const seriesContext = await getSeriesContext(post);
 
 const readingTime: number = remarkPluginFrontmatter.readingTime ?? 1;
@@ -30,8 +31,10 @@ const readingTime: number = remarkPluginFrontmatter.readingTime ?? 1;
   type="article"
   publishedTime={post.data.date}
   modifiedTime={post.data.updated}
+  wide
 >
-  <article>
+  <div class="article-shell">
+  <article class="article-shell__main">
     <header class="article__header">
       <h1 class="article__title">{post.data.title}</h1>
       <p class="article__desc">{post.data.description}</p>
@@ -76,4 +79,9 @@ const readingTime: number = remarkPluginFrontmatter.readingTime ?? 1;
       )}
     </footer>
   </article>
+
+    <aside class="article-shell__rail">
+      <TableOfContents headings={headings} />
+    </aside>
+  </div>
 </BaseLayout>

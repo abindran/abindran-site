@@ -44,3 +44,40 @@ export const FOOTER_COLUMNS = [
 
 /** Series listed individually in the footer before collapsing to an index link. */
 export const FOOTER_SERIES_LIMIT = 4;
+
+/**
+ * Social and contact links. Kept here so the About page and anywhere else that
+ * needs them stay in agreement.
+ */
+export const SOCIAL_LINKS = [
+  {
+    name: 'Email',
+    href: 'mailto:abindranr@gmail.com',
+    handle: 'abindranr@gmail.com',
+    icon: 'mail',
+  },
+  {
+    name: 'GitHub',
+    href: 'https://github.com/abindran',
+    handle: '@abindran',
+    icon: 'github',
+  },
+  {
+    name: 'LinkedIn',
+    href: 'https://www.linkedin.com/in/abindran-r/',
+    handle: 'abindran-r',
+    icon: 'linkedin',
+  },
+  {
+    name: 'LeetCode',
+    href: 'https://leetcode.com/u/abindranr/',
+    handle: '@abindranr',
+    icon: 'leetcode',
+  },
+  {
+    name: 'Instagram',
+    href: 'https://www.instagram.com/abindran_r/',
+    handle: '@abindran_r',
+    icon: 'instagram',
+  },
+] as const;
