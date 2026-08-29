@@ -1,0 +1,270 @@
+name: Sync from Obsidian
+
+# Pulls published notes out of the Obsidian vault repo and commits them here.
+# Pushing to this repo is what triggers the Cloudflare build, so a successful
+# sync is a deploy.
+#
+# The vault is a *source*; this repo is the *record*. Cloudflare only ever sees
+# this repo, so content that is not committed here cannot be deployed.
+
+on:
+  # Publishing is push-driven: the vault repo fires this on every push to the
+  # published folder (see .github/workflows/notify-blog.yml in the vault repo).
+  repository_dispatch:
+    types: [obsidian-updated]
+  workflow_dispatch:          # manual re-run from the Actions tab
+
+concurrency:
+  group: obsidian-sync
+  cancel-in-progress: false   # never interrupt a run mid-commit
+
+permissions:
+  contents: write             # required to push the synced content back
+
+env:
+  VAULT_REPO: abindran/Obsidian-Backup
+  VAULT_FOLDER: Final Draft   # only this folder is published
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v4
+
+      - name: Checkout vault
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.VAULT_REPO }}
+          path: .vault
+          # Public repo, so no token needed. If it is ever made private, add:
+          #   token: ${{ secrets.VAULT_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sync notes
+        id: sync
+        run: |
+          npm install --no-save --silent yaml
+          cat > /tmp/sync.mjs << 'EOF'
+          import { readFile, writeFile, mkdir, readdir, copyFile, rm } from 'node:fs/promises';
+          import { existsSync } from 'node:fs';
+          import path from 'node:path';
+          import YAML from 'yaml';
+
+          const VAULT = path.resolve('.vault');
+          const FOLDER = process.env.VAULT_FOLDER;
+          const SRC = path.join(VAULT, FOLDER);
+          const CONTENT = path.resolve('src/content/blog');
+          const ASSETS = path.resolve('src/assets/blog');
+          const MANIFEST = path.resolve('.obsidian-sync.json');
+          const IMAGE_EXT = new Set(['.png','.jpg','.jpeg','.webp','.avif','.gif','.svg']);
+
+          if (!existsSync(SRC)) {
+            // Not an error: the folder may simply not exist yet.
+            console.log(`::warning::"${FOLDER}" not found in ${process.env.VAULT_REPO}. Nothing to sync.`);
+            console.log('changed=false');
+            process.exit(0);
+          }
+
+          const walk = async (dir, out = []) => {
+            for (const e of await readdir(dir, { withFileTypes: true })) {
+              if (e.name.startsWith('.')) continue;
+              const p = path.join(dir, e.name);
+              if (e.isDirectory()) await walk(p, out); else out.push(p);
+            }
+            return out;
+          };
+
+          const slugify = (s) => s.toString().trim().toLowerCase()
+            .replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const safeName = (f) =>
+            `${slugify(path.basename(f, path.extname(f))) || 'image'}${path.extname(f).toLowerCase()}`;
+          const ymd = (v) => {
+            const d = v instanceof Date ? v : new Date(v);
+            return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+          };
+
+          // Index every attachment in the WHOLE vault by basename — Obsidian
+          // resolves embeds that way, regardless of which folder the file is in.
+          const allVaultFiles = await walk(VAULT);
+          const index = new Map();
+          for (const f of allVaultFiles) {
+            if (path.extname(f).toLowerCase() === '.md') continue;
+            const k = path.basename(f).toLowerCase();
+            if (!index.has(k)) index.set(k, f);
+          }
+
+          const notes = (await walk(SRC)).filter((f) => path.extname(f).toLowerCase() === '.md');
+          const previous = existsSync(MANIFEST)
+            ? JSON.parse(await readFile(MANIFEST, 'utf8')) : { posts: {} };
+
+          const synced = {};
+          const problems = [];
+
+          for (const file of notes) {
+            const rel = path.relative(VAULT, file);
+            const raw = await readFile(file, 'utf8');
+            let data = {}, body = raw;
+
+            if (raw.startsWith('---')) {
+              const end = raw.indexOf('\n---', 3);
+              if (end !== -1) {
+                try { data = YAML.parse(raw.slice(3, end)) ?? {}; }
+                catch (e) { problems.push(`${rel}: unreadable frontmatter (${e.message})`); continue; }
+                body = raw.slice(end + 4).replace(/^\r?\n/, '');
+              }
+            }
+
+            const title = data.title || path.basename(file, '.md');
+            const slug = slugify(data.slug || title);
+            const date = ymd(data.date);
+
+            if (!date) { problems.push(`${rel}: missing or invalid "date"`); continue; }
+            if (!data.description) { problems.push(`${rel}: missing "description"`); continue; }
+
+            // --- attachments -------------------------------------------------
+            // Two syntaxes have to work. Obsidian writes ![[img.png]] when
+            // "Use [[Wikilinks]]" is on, and standard ![alt](img.png) when it is
+            // off — so supporting only one silently drops half the images.
+            const noteDir = path.dirname(file);
+            const resolveAttachment = (rawTarget) => {
+              const cleaned = decodeURIComponent(
+                rawTarget.trim().split('#')[0].split('|')[0].trim(),
+              );
+              if (!IMAGE_EXT.has(path.extname(cleaned).toLowerCase())) return null;
+              // Try the note-relative and vault-relative paths first, then fall
+              // back to basename lookup, which is how Obsidian itself resolves.
+              for (const c of [path.resolve(noteDir, cleaned), path.resolve(VAULT, cleaned)]) {
+                if (existsSync(c)) return { source: c, name: path.basename(cleaned) };
+              }
+              const found = index.get(path.basename(cleaned).toLowerCase());
+              return found ? { source: found, name: path.basename(cleaned) } : null;
+            };
+
+            const used = [];
+            const missing = [];
+            const take = (hit) => {
+              const dest = safeName(hit.name);
+              used.push({ name: dest, source: hit.source });
+              return dest;
+            };
+
+            // ![[image.png]] and ![[image.png|alt or width]]
+            body = body.replace(/!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (m, target, label) => {
+              const ext = path.extname(target.trim()).toLowerCase();
+              if (!IMAGE_EXT.has(ext)) return m;          // note embed: leave alone
+              const hit = resolveAttachment(target);
+              if (!hit) { missing.push(target.trim()); return m; }
+              const alt = label && !/^\d+(x\d+)?$/.test(label.trim()) ? label.trim() : '';
+              return `![${alt}](../../assets/blog/${slug}/${take(hit)})`;
+            });
+
+            // ![alt](path/to/image.png "optional title")
+            body = body.replace(/!\[([^\]]*)\]\(\s*<?([^)>\s]+)>?(\s+"[^"]*")?\s*\)/g,
+              (m, alt, target, title) => {
+                if (/^(https?:|data:|\/\/)/i.test(target)) return m;   // external: leave alone
+                // The wikilink pass above already rewrote some images into this
+                // exact shape; without this guard they get re-resolved and warn
+                // that the freshly-written path does not exist in the vault.
+                if (target.startsWith('../../assets/blog/')) return m;
+                const ext = path.extname(decodeURIComponent(target).split('#')[0]).toLowerCase();
+                if (!IMAGE_EXT.has(ext)) return m;
+                const hit = resolveAttachment(target);
+                if (!hit) { missing.push(target); return m; }
+                return `![${alt}](../../assets/blog/${slug}/${take(hit)}${title ?? ''})`;
+              });
+
+            // Cover may be "[[x.png]]", "![[x.png]]", or a plain path.
+            let cover = null;
+            if (typeof data.cover === 'string' && data.cover.trim()) {
+              const bare = data.cover.trim().replace(/^!?\[\[/, '').replace(/\]\]$/, '');
+              const hit = resolveAttachment(bare);
+              if (hit) cover = { name: safeName(hit.name), source: hit.source,
+                                 rel: `../../assets/blog/${slug}/${safeName(hit.name)}` };
+              else problems.push(`${rel}: cover not found — ${data.cover}`);
+            }
+
+            // An unresolved image is fatal to `astro build` — Astro cannot
+            // resolve the relative path and fails the whole run. Skipping just
+            // this note keeps one typo from blocking every other post.
+            if (missing.length) {
+              problems.push(`${rel}: skipped — image(s) not found in vault: ${missing.join(', ')}`);
+              continue;
+            }
+
+            const dest = path.join(CONTENT, `${slug}.md`);
+            const owned = Object.prototype.hasOwnProperty.call(previous.posts, slug);
+            if (existsSync(dest) && !owned) {
+              problems.push(`${rel}: ${slug}.md exists and was not created by sync — refusing to overwrite`);
+              continue;
+            }
+
+            // Rebuild frontmatter in the shape src/content.config.ts expects.
+            // Unknown vault properties are dropped, so private metadata never ships.
+            const fm = { title, description: String(data.description), date };
+            if (data.updated && ymd(data.updated)) fm.updated = ymd(data.updated);
+            if (Array.isArray(data.tags) && data.tags.length) fm.tags = data.tags.map(String);
+            if (data.draft === true) fm.draft = true;
+            if (data.series) { fm.series = String(data.series); fm.seriesOrder = Number(data.seriesOrder); }
+            if (cover) { fm.cover = cover.rel; fm.coverAlt = String(data.coverAlt ?? ''); }
+
+            let y = YAML.stringify(fm, { lineWidth: 0 })
+              .replace(/^(date|updated): "(\d{4}-\d{2}-\d{2})"$/gm, '$1: $2');
+
+            await mkdir(CONTENT, { recursive: true });
+            await writeFile(dest, `---\n${y}---\n\n${body.trim()}\n`, 'utf8');
+
+            const attachments = [];
+            const seen = new Set();
+            for (const a of cover ? [...used, cover] : used) {
+              if (seen.has(a.name)) continue;
+              seen.add(a.name); attachments.push(a);
+            }
+            if (attachments.length) {
+              await mkdir(path.join(ASSETS, slug), { recursive: true });
+              for (const a of attachments) await copyFile(a.source, path.join(ASSETS, slug, a.name));
+            }
+
+            synced[slug] = { note: rel, attachments: attachments.map((a) => a.name) };
+            console.log(`  synced ${slug}`);
+          }
+
+          // A note removed from the folder is an unpublish: mirror the deletion,
+          // but only for posts this workflow created.
+          for (const slug of Object.keys(previous.posts)) {
+            if (slug in synced) continue;
+            await rm(path.join(CONTENT, `${slug}.md`), { force: true });
+            await rm(path.join(ASSETS, slug), { recursive: true, force: true });
+            console.log(`  removed ${slug} (no longer in ${FOLDER})`);
+          }
+
+          await writeFile(MANIFEST, JSON.stringify({ posts: synced }, null, 2) + '\n', 'utf8');
+
+          if (problems.length) {
+            for (const p of problems) console.log(`::warning::${p}`);
+          }
+          console.log(`\n${Object.keys(synced).length} note(s) published from "${FOLDER}"`);
+          EOF
+          node /tmp/sync.mjs
+
+      - name: Verify the site still builds
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Commit and push
+        run: |
+          if [ -z "$(git status --porcelain -- src .obsidian-sync.json)" ]; then
+            echo "No content changes — nothing to deploy."
+            exit 0
+          fi
+          git config user.name  "obsidian-sync[bot]"
+          git config user.email "obsidian-sync@users.noreply.github.com"
+          git add -- src .obsidian-sync.json
+          git commit -m "Sync content from Obsidian"
+          git push
+          echo "Pushed — Cloudflare will rebuild."
