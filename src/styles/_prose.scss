@@ -134,20 +134,6 @@
     }
   }
 
-  // Shiki dual-theme switching. Shiki emits light colours inline and dark ones
-  // as CSS custom properties; this swaps them under a dark colour scheme.
-  // !important is required — Shiki writes the light colour as an inline style.
-  @media (prefers-color-scheme: dark) {
-    .astro-code,
-    .astro-code span {
-      color: var(--shiki-dark) !important;
-      background-color: var(--shiki-dark-bg) !important;
-      font-style: var(--shiki-dark-font-style) !important;
-      font-weight: var(--shiki-dark-font-weight) !important;
-      text-decoration: var(--shiki-dark-text-decoration) !important;
-    }
-  }
-
   table {
     width: 100%;
     border-collapse: collapse;
@@ -338,3 +324,27 @@
     line-height: 1.4;
   }
 }
+
+
+// Shiki dual-theme switching. Shiki emits light colours inline and dark ones as
+// CSS custom properties; this swaps them. !important is required because Shiki
+// writes the light colour as an inline style.
+//
+// Mirrors the light/dark resolution in _tokens.scss: system preference unless
+// the reader has explicitly chosen.
+@mixin shiki-dark {
+  .prose .astro-code,
+  .prose .astro-code span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+    font-style: var(--shiki-dark-font-style) !important;
+    font-weight: var(--shiki-dark-font-weight) !important;
+    text-decoration: var(--shiki-dark-text-decoration) !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { @include shiki-dark; }
+}
+
+:root[data-theme='dark'] { @include shiki-dark; }

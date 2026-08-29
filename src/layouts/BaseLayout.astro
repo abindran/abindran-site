@@ -82,6 +82,25 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? SITE.url).href;
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
+
+    {/*
+      Runs before first paint, so the stored theme is applied while the page is
+      still parsing. `is:inline` is essential: Astro would otherwise bundle this
+      as a deferred module, which executes after paint and produces exactly the
+      flash of wrong theme this exists to prevent.
+    */}
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+        try {
+          var saved = localStorage.getItem('theme');
+          if (saved === 'light' || saved === 'dark') root.dataset.theme = saved;
+        } catch (e) {
+          // Storage unavailable: fall through to prefers-color-scheme.
+        }
+      })();
+    </script>
   </head>
 
   <body>

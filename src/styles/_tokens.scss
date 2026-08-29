@@ -26,27 +26,35 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161614;
-    --bg-subtle: #1e1e1b;
-    --bg-code: #1c1c19;
-    --border: #2e2e2a;
-    --border-strong: #43433d;
+// Dark values, defined once and applied from two places: the system preference
+// (when the reader has expressed no choice) and an explicit [data-theme].
+@mixin dark-tokens {
+  --bg: #161614;
+  --bg-subtle: #1e1e1b;
+  --bg-code: #1c1c19;
+  --border: #2e2e2a;
+  --border-strong: #43433d;
 
-    --text: #e8e8e3;
-    --text-muted: #a3a39a;
-    --text-faint: #78786f;
+  --text: #e8e8e3;
+  --text-muted: #a3a39a;
+  --text-faint: #78786f;
 
-    --accent: #f0946a;
-    --accent-hover: #f5b393;
-    --accent-subtle: #241a15;
+  --accent: #f0946a;
+  --accent-hover: #f5b393;
+  --accent-subtle: #241a15;
 
-    --selection: #4a2f21;
+  --selection: #4a2f21;
 
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
+
+// System preference — but only while the reader has not chosen light explicitly.
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { @include dark-tokens; }
+}
+
+// Explicit choice always wins, in either direction.
+:root[data-theme='dark'] { @include dark-tokens; }
 
 // Type scale — 1.200 (minor third), rounded to sensible rem values.
 $text-xs:   0.75rem;
