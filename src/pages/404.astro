@@ -3,12 +3,127 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
 <BaseLayout title="Page not found" description="That page does not exist.">
-  <div class="page-header">
-    <h1 class="page-header__title">404</h1>
-    <p class="page-header__lede">
-      That page does not exist. It may have moved, or never existed at all.
-    </p>
-  </div>
+  <div class="notfound">
+    <!-- Decorative: the heading and copy below carry the meaning. -->
+    <svg
+      class="notfound__art"
+      viewBox="0 0 320 290"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle cx="152" cy="132" r="106" class="art-disc" />
 
-  <p><a href="/">← Back home</a></p>
+      <!-- Scattered network nodes -->
+      <g class="art-node">
+        <path d="M64 118 88 104M88 104 92 132" />
+        <circle cx="64" cy="118" r="5" />
+        <circle cx="88" cy="104" r="7" />
+        <circle cx="92" cy="132" r="4" />
+      </g>
+      <g class="art-node">
+        <path d="M232 96 250 112M250 112 244 138" />
+        <circle cx="232" cy="96" r="4" />
+        <circle cx="250" cy="112" r="6" />
+        <circle cx="244" cy="138" r="4" />
+      </g>
+
+      <!-- Open, empty box -->
+      <path class="art-box-in" d="M112 176 152 164 192 176 152 190Z" />
+      <path class="art-box" d="M116 176 188 176 182 244 122 244Z" />
+      <path class="art-flap" d="M116 176 88 160 108 146 136 165Z" />
+      <path class="art-flap" d="M188 176 216 160 196 146 168 165Z" />
+      <text class="art-code" x="152" y="216" text-anchor="middle">&lt;/&gt;</text>
+
+      <!-- Question badge -->
+      <circle cx="238" cy="52" r="34" class="art-badge" />
+      <text class="art-badge-mark" x="238" y="52" text-anchor="middle"
+        dominant-baseline="central">?</text>
+    </svg>
+
+    <h1 class="notfound__title">404</h1>
+    <p class="notfound__text">Sorry, the page you visited does not exist.</p>
+    <a href="/" class="button">Back home</a>
+  </div>
 </BaseLayout>
+
+<style lang="scss">
+  @use "../styles/tokens" as *;
+
+  .notfound {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-block: $space-8 $space-16;
+
+    &__art {
+      width: 100%;
+      max-width: 23rem;
+      height: auto;
+      margin-bottom: $space-8;
+    }
+
+    &__title {
+      font-size: 3.5rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &__text {
+      margin-top: $space-4;
+      color: var(--text-muted);
+      font-size: $text-lg;
+    }
+  }
+
+  // --- illustration parts, all driven by the site's own tokens ---
+
+  // --border reads as a disc against both --bg values; --bg-subtle is too
+  // close to the page background in dark mode to be visible.
+  .art-disc { fill: var(--border); }
+
+  .art-node {
+    stroke: var(--text-faint);
+    stroke-width: 2;
+    circle { fill: var(--text-faint); stroke: none; }
+  }
+
+  .art-box {
+    fill: var(--bg);
+    stroke: var(--text-faint);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+
+  .art-box-in {
+    fill: var(--border-strong);
+    stroke: var(--text-faint);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+
+  .art-flap {
+    fill: var(--bg);
+    stroke: var(--text-faint);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+
+  .art-code {
+    fill: var(--text-faint);
+    font-family: $font-mono;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .art-badge { fill: var(--accent); }
+
+  .art-badge-mark {
+    fill: #fff;
+    font-family: $font-sans;
+    font-size: 2.5rem;
+    font-weight: 700;
+  }
+</style>

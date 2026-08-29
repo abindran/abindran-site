@@ -39,8 +39,23 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? SITE.url).href;
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {/* Universal fallback: also what browsers request automatically. */}
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    {/* Theme-aware. `media` on icon links is honoured by Chromium and Safari;
+        browsers that ignore it fall back to the .ico above. */}
+    <link
+      rel="icon"
+      type="image/png"
+      href="/light-favicon-32.png"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/dark-favicon-32.png"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link
       rel="alternate"
       type="application/rss+xml"

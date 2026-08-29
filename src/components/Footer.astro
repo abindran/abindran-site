@@ -1,17 +1,57 @@
 ---
-import { SITE } from '../consts';
+import { SITE, FOOTER_COLUMNS, FOOTER_SERIES_LIMIT } from '../consts';
+import { getAllSeries, urls } from '../lib/content';
 import Icon from './Icon.astro';
 
 const year = new Date().getFullYear();
+
+// Only series that actually have articles — an empty series is a dead link.
+const allSeries = (await getAllSeries()).filter((s) => s.posts.length > 0);
+const shownSeries = allSeries.slice(0, FOOTER_SERIES_LIMIT);
+const hasMoreSeries = allSeries.length > shownSeries.length;
 ---
 
 <footer class="site-footer">
-  <div class="layout site-footer__inner">
-    <span>© {year} {SITE.author}</span>
+  <div class="layout">
+    <nav class="footer-nav" aria-label="Footer">
+      {FOOTER_COLUMNS.map((column) => (
+        <div class="footer-nav__col">
+          <h2 class="footer-nav__title">{column.title}</h2>
+          <ul class="footer-nav__list" role="list">
+            {column.links.map((link) => (
+              <li><a href={link.href}>{link.label}</a></li>
+            ))}
+          </ul>
+        </div>
+      ))}
 
-    <a href="/rss.xml" class="icon-link" title="RSS feed">
-      <Icon name="rss" badge />
-      <span>RSS</span>
-    </a>
+      {shownSeries.length > 0 && (
+        <div class="footer-nav__col">
+          <h2 class="footer-nav__title">Series</h2>
+          <ul class="footer-nav__list" role="list">
+            {shownSeries.map(({ series, posts }) => (
+              <li>
+                <a href={urls.series(series)}>
+                  {series.data.title}
+                  <span class="footer-nav__count">{posts.length}</span>
+                </a>
+              </li>
+            ))}
+            {hasMoreSeries && (
+              <li><a href="/series">All series →</a></li>
+            )}
+          </ul>
+        </div>
+      )}
+    </nav>
+
+    <div class="site-footer__bar">
+      <span>© {year} {SITE.author}</span>
+
+      <a href="/rss.xml" class="icon-link" title="RSS feed">
+        <Icon name="rss" badge />
+        <span>RSS</span>
+      </a>
+    </div>
   </div>
 </footer>
