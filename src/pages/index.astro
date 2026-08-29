@@ -1,5 +1,9 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const blogEntries = await getCollection('blog');
+// console.log(blogEntries);
 ---
 
 <BaseLayout title="Home">
