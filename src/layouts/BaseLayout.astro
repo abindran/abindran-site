@@ -55,14 +55,27 @@ const ogImage = og ? new URL(og.src, Astro.site ?? SITE.url).href : undefined;
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
 
-    {/* Universal fallback: also what browsers request automatically. */}
-    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     {/*
-      Defaults to the dark-background mark because the site is dark by default.
-      ThemeToggle rewrites this href when the reader switches — a CSS media
-      query cannot follow an in-page toggle.
+      Favicon follows the BROWSER/OS colour scheme, not the site's theme toggle.
+      The tab icon sits in browser chrome, so it should match that chrome rather
+      than the page.
+
+      `media` on icon links is honoured by Chromium and Safari; Firefox ignores
+      it and falls back to the .ico below, which is why that comes first.
     */}
-    <link rel="icon" type="image/png" href="/dark-favicon-32.png" data-favicon />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/light-favicon-32.png"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/dark-favicon-32.png"
+      media="(prefers-color-scheme: dark)"
+    />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link
       rel="alternate"
