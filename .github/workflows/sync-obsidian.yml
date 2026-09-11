@@ -23,7 +23,8 @@ permissions:
 
 env:
   VAULT_REPO: abindran/Obsidian-Backup
-  VAULT_FOLDER: Final Draft   # only this folder is published
+  VAULT_FOLDER: Final Draft/blog          # published blog posts
+  VAULT_SERIES_FOLDER: Final Draft/series # series landing pages
 
 jobs:
   sync:
@@ -37,8 +38,11 @@ jobs:
         with:
           repository: ${{ env.VAULT_REPO }}
           path: .vault
-          # Public repo, so no token needed. If it is ever made private, add:
-          #   token: ${{ secrets.VAULT_TOKEN }}
+          # Obsidian-Backup is private, so the default GITHUB_TOKEN (scoped
+          # only to this repo) can't see it. VAULT_TOKEN is a fine-grained PAT
+          # with Contents: Read-only on abindran/Obsidian-Backup, set as a
+          # secret on this repo (Settings -> Secrets and variables -> Actions).
+          token: ${{ secrets.VAULT_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -48,26 +52,18 @@ jobs:
         id: sync
         run: |
           npm install --no-save --silent yaml
-          cat > /tmp/sync.mjs << 'EOF'
+          # The script must live inside the workspace: Node resolves the bare
+          # `yaml` import by walking up from the script's own directory, so a
+          # script in /tmp can never see the node_modules installed above.
+          cat > .sync.mjs << 'EOF'
           import { readFile, writeFile, mkdir, readdir, copyFile, rm } from 'node:fs/promises';
           import { existsSync } from 'node:fs';
           import path from 'node:path';
           import YAML from 'yaml';
 
           const VAULT = path.resolve('.vault');
-          const FOLDER = process.env.VAULT_FOLDER;
-          const SRC = path.join(VAULT, FOLDER);
-          const CONTENT = path.resolve('src/content/blog');
-          const ASSETS = path.resolve('src/assets/blog');
           const MANIFEST = path.resolve('.obsidian-sync.json');
           const IMAGE_EXT = new Set(['.png','.jpg','.jpeg','.webp','.avif','.gif','.svg']);
-
-          if (!existsSync(SRC)) {
-            // Not an error: the folder may simply not exist yet.
-            console.log(`::warning::"${FOLDER}" not found in ${process.env.VAULT_REPO}. Nothing to sync.`);
-            console.log('changed=false');
-            process.exit(0);
-          }
 
           const walk = async (dir, out = []) => {
             for (const e of await readdir(dir, { withFileTypes: true })) {
@@ -97,158 +93,210 @@ jobs:
             if (!index.has(k)) index.set(k, f);
           }
 
-          const notes = (await walk(SRC)).filter((f) => path.extname(f).toLowerCase() === '.md');
           const previous = existsSync(MANIFEST)
-            ? JSON.parse(await readFile(MANIFEST, 'utf8')) : { posts: {} };
+            ? JSON.parse(await readFile(MANIFEST, 'utf8')) : { posts: {}, series: {} };
+          previous.posts ??= {};
+          previous.series ??= {};
 
-          const synced = {};
           const problems = [];
 
-          for (const file of notes) {
-            const rel = path.relative(VAULT, file);
-            const raw = await readFile(file, 'utf8');
-            let data = {}, body = raw;
+          // Syncs one vault folder of notes into one content collection.
+          // `toFrontmatter(data, ctx)` maps parsed vault frontmatter to the
+          // fields src/content.config.ts expects for that collection —
+          // unknown vault properties are dropped, so private notes never
+          // ship anything unexpected. Returning null skips the note (the
+          // callback is expected to push its own problem first).
+          async function syncFolder({ label, folder, contentDir, assetsName, ownedSlugs, toFrontmatter }) {
+            const synced = {};
+            const src = path.join(VAULT, folder);
 
-            if (raw.startsWith('---')) {
-              const end = raw.indexOf('\n---', 3);
-              if (end !== -1) {
-                try { data = YAML.parse(raw.slice(3, end)) ?? {}; }
-                catch (e) { problems.push(`${rel}: unreadable frontmatter (${e.message})`); continue; }
-                body = raw.slice(end + 4).replace(/^\r?\n/, '');
-              }
+            if (!existsSync(src)) {
+              // Not an error: the folder may simply not exist yet.
+              console.log(`::warning::"${folder}" not found in ${process.env.VAULT_REPO}. Nothing to sync for ${label}.`);
+              return synced;
             }
 
-            const title = data.title || path.basename(file, '.md');
-            const slug = slugify(data.slug || title);
-            const date = ymd(data.date);
+            const notes = (await walk(src)).filter((f) => path.extname(f).toLowerCase() === '.md');
 
-            if (!date) { problems.push(`${rel}: missing or invalid "date"`); continue; }
-            if (!data.description) { problems.push(`${rel}: missing "description"`); continue; }
+            for (const file of notes) {
+              const rel = path.relative(VAULT, file);
+              const raw = await readFile(file, 'utf8');
+              let data = {}, body = raw;
 
-            // --- attachments -------------------------------------------------
-            // Two syntaxes have to work. Obsidian writes ![[img.png]] when
-            // "Use [[Wikilinks]]" is on, and standard ![alt](img.png) when it is
-            // off — so supporting only one silently drops half the images.
-            const noteDir = path.dirname(file);
-            const resolveAttachment = (rawTarget) => {
-              const cleaned = decodeURIComponent(
-                rawTarget.trim().split('#')[0].split('|')[0].trim(),
-              );
-              if (!IMAGE_EXT.has(path.extname(cleaned).toLowerCase())) return null;
-              // Try the note-relative and vault-relative paths first, then fall
-              // back to basename lookup, which is how Obsidian itself resolves.
-              for (const c of [path.resolve(noteDir, cleaned), path.resolve(VAULT, cleaned)]) {
-                if (existsSync(c)) return { source: c, name: path.basename(cleaned) };
+              if (raw.startsWith('---')) {
+                const end = raw.indexOf('\n---', 3);
+                if (end !== -1) {
+                  try { data = YAML.parse(raw.slice(3, end)) ?? {}; }
+                  catch (e) { problems.push(`${rel}: unreadable frontmatter (${e.message})`); continue; }
+                  body = raw.slice(end + 4).replace(/^\r?\n/, '');
+                }
               }
-              const found = index.get(path.basename(cleaned).toLowerCase());
-              return found ? { source: found, name: path.basename(cleaned) } : null;
-            };
 
-            const used = [];
-            const missing = [];
-            const take = (hit) => {
-              const dest = safeName(hit.name);
-              used.push({ name: dest, source: hit.source });
-              return dest;
-            };
+              const title = data.title || path.basename(file, '.md');
+              const slug = slugify(data.slug || title);
 
-            // ![[image.png]] and ![[image.png|alt or width]]
-            body = body.replace(/!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (m, target, label) => {
-              const ext = path.extname(target.trim()).toLowerCase();
-              if (!IMAGE_EXT.has(ext)) return m;          // note embed: leave alone
-              const hit = resolveAttachment(target);
-              if (!hit) { missing.push(target.trim()); return m; }
-              const alt = label && !/^\d+(x\d+)?$/.test(label.trim()) ? label.trim() : '';
-              return `![${alt}](../../assets/blog/${slug}/${take(hit)})`;
-            });
+              // --- attachments -------------------------------------------------
+              // Two syntaxes have to work. Obsidian writes ![[img.png]] when
+              // "Use [[Wikilinks]]" is on, and standard ![alt](img.png) when it
+              // is off — so supporting only one silently drops half the images.
+              const noteDir = path.dirname(file);
+              const resolveAttachment = (rawTarget) => {
+                const cleaned = decodeURIComponent(
+                  rawTarget.trim().split('#')[0].split('|')[0].trim(),
+                );
+                if (!IMAGE_EXT.has(path.extname(cleaned).toLowerCase())) return null;
+                // Try the note-relative and vault-relative paths first, then
+                // fall back to basename lookup, which is how Obsidian itself
+                // resolves embeds.
+                for (const c of [path.resolve(noteDir, cleaned), path.resolve(VAULT, cleaned)]) {
+                  if (existsSync(c)) return { source: c, name: path.basename(cleaned) };
+                }
+                const found = index.get(path.basename(cleaned).toLowerCase());
+                return found ? { source: found, name: path.basename(cleaned) } : null;
+              };
 
-            // ![alt](path/to/image.png "optional title")
-            body = body.replace(/!\[([^\]]*)\]\(\s*<?([^)>\s]+)>?(\s+"[^"]*")?\s*\)/g,
-              (m, alt, target, title) => {
-                if (/^(https?:|data:|\/\/)/i.test(target)) return m;   // external: leave alone
-                // The wikilink pass above already rewrote some images into this
-                // exact shape; without this guard they get re-resolved and warn
-                // that the freshly-written path does not exist in the vault.
-                if (target.startsWith('../../assets/blog/')) return m;
-                const ext = path.extname(decodeURIComponent(target).split('#')[0]).toLowerCase();
-                if (!IMAGE_EXT.has(ext)) return m;
+              const used = [];
+              const missing = [];
+              const take = (hit) => {
+                const dest = safeName(hit.name);
+                used.push({ name: dest, source: hit.source });
+                return dest;
+              };
+
+              // ![[image.png]] and ![[image.png|alt or width]]
+              body = body.replace(/!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (m, target, label2) => {
+                const ext = path.extname(target.trim()).toLowerCase();
+                if (!IMAGE_EXT.has(ext)) return m;          // note embed: leave alone
                 const hit = resolveAttachment(target);
-                if (!hit) { missing.push(target); return m; }
-                return `![${alt}](../../assets/blog/${slug}/${take(hit)}${title ?? ''})`;
+                if (!hit) { missing.push(target.trim()); return m; }
+                const alt = label2 && !/^\d+(x\d+)?$/.test(label2.trim()) ? label2.trim() : '';
+                return `![${alt}](../../assets/${assetsName}/${slug}/${take(hit)})`;
               });
 
-            // Cover may be "[[x.png]]", "![[x.png]]", or a plain path.
-            let cover = null;
-            if (typeof data.cover === 'string' && data.cover.trim()) {
-              const bare = data.cover.trim().replace(/^!?\[\[/, '').replace(/\]\]$/, '');
-              const hit = resolveAttachment(bare);
-              if (hit) cover = { name: safeName(hit.name), source: hit.source,
-                                 rel: `../../assets/blog/${slug}/${safeName(hit.name)}` };
-              else problems.push(`${rel}: cover not found — ${data.cover}`);
+              // ![alt](path/to/image.png "optional title")
+              body = body.replace(/!\[([^\]]*)\]\(\s*<?([^)>\s]+)>?(\s+"[^"]*")?\s*\)/g,
+                (m, alt, target, titleAttr) => {
+                  if (/^(https?:|data:|\/\/)/i.test(target)) return m;   // external: leave alone
+                  // The wikilink pass above already rewrote some images into
+                  // this exact shape; without this guard they get re-resolved
+                  // and warn that the freshly-written path does not exist.
+                  if (target.startsWith(`../../assets/${assetsName}/`)) return m;
+                  const ext = path.extname(decodeURIComponent(target).split('#')[0]).toLowerCase();
+                  if (!IMAGE_EXT.has(ext)) return m;
+                  const hit = resolveAttachment(target);
+                  if (!hit) { missing.push(target); return m; }
+                  return `![${alt}](../../assets/${assetsName}/${slug}/${take(hit)}${titleAttr ?? ''})`;
+                });
+
+              // Cover may be "[[x.png]]", "![[x.png]]", or a plain path.
+              let cover = null;
+              if (typeof data.cover === 'string' && data.cover.trim()) {
+                const bare = data.cover.trim().replace(/^!?\[\[/, '').replace(/\]\]$/, '');
+                const hit = resolveAttachment(bare);
+                if (hit) cover = { name: safeName(hit.name), source: hit.source,
+                                   rel: `../../assets/${assetsName}/${slug}/${safeName(hit.name)}` };
+                else problems.push(`${rel}: cover not found — ${data.cover}`);
+              }
+
+              // An unresolved image is fatal to `astro build` — Astro cannot
+              // resolve the relative path and fails the whole run. Skipping
+              // just this note keeps one typo from blocking every other one.
+              if (missing.length) {
+                problems.push(`${rel}: skipped — image(s) not found in vault: ${missing.join(', ')}`);
+                continue;
+              }
+
+              const fm = toFrontmatter(data, { title, cover, rel });
+              if (fm === null) continue;
+
+              const dest = path.join(contentDir, `${slug}.md`);
+              const owned = Object.prototype.hasOwnProperty.call(ownedSlugs, slug);
+              if (existsSync(dest) && !owned) {
+                problems.push(`${rel}: ${slug}.md exists and was not created by sync — refusing to overwrite`);
+                continue;
+              }
+
+              let y = YAML.stringify(fm, { lineWidth: 0 })
+                .replace(/^(date|updated): "(\d{4}-\d{2}-\d{2})"$/gm, '$1: $2');
+
+              await mkdir(contentDir, { recursive: true });
+              await writeFile(dest, `---\n${y}---\n\n${body.trim()}\n`, 'utf8');
+
+              const attachments = [];
+              const seen = new Set();
+              for (const a of cover ? [...used, cover] : used) {
+                if (seen.has(a.name)) continue;
+                seen.add(a.name); attachments.push(a);
+              }
+              if (attachments.length) {
+                const assetDir = path.resolve('src/assets', assetsName, slug);
+                await mkdir(assetDir, { recursive: true });
+                for (const a of attachments) await copyFile(a.source, path.join(assetDir, a.name));
+              }
+
+              synced[slug] = { note: rel, attachments: attachments.map((a) => a.name) };
+              console.log(`  synced ${label} ${slug}`);
             }
 
-            // An unresolved image is fatal to `astro build` — Astro cannot
-            // resolve the relative path and fails the whole run. Skipping just
-            // this note keeps one typo from blocking every other post.
-            if (missing.length) {
-              problems.push(`${rel}: skipped — image(s) not found in vault: ${missing.join(', ')}`);
-              continue;
+            // A note removed from the folder is an unpublish: mirror the
+            // deletion, but only for entries this workflow created.
+            for (const slug of Object.keys(ownedSlugs)) {
+              if (slug in synced) continue;
+              await rm(path.join(contentDir, `${slug}.md`), { force: true });
+              await rm(path.resolve('src/assets', assetsName, slug), { recursive: true, force: true });
+              console.log(`  removed ${label} ${slug} (no longer in "${folder}")`);
             }
 
-            const dest = path.join(CONTENT, `${slug}.md`);
-            const owned = Object.prototype.hasOwnProperty.call(previous.posts, slug);
-            if (existsSync(dest) && !owned) {
-              problems.push(`${rel}: ${slug}.md exists and was not created by sync — refusing to overwrite`);
-              continue;
-            }
-
-            // Rebuild frontmatter in the shape src/content.config.ts expects.
-            // Unknown vault properties are dropped, so private metadata never ships.
-            const fm = { title, description: String(data.description), date };
-            if (data.updated && ymd(data.updated)) fm.updated = ymd(data.updated);
-            if (Array.isArray(data.tags) && data.tags.length) fm.tags = data.tags.map(String);
-            if (data.draft === true) fm.draft = true;
-            if (data.series) { fm.series = String(data.series); fm.seriesOrder = Number(data.seriesOrder); }
-            if (cover) { fm.cover = cover.rel; fm.coverAlt = String(data.coverAlt ?? ''); }
-
-            let y = YAML.stringify(fm, { lineWidth: 0 })
-              .replace(/^(date|updated): "(\d{4}-\d{2}-\d{2})"$/gm, '$1: $2');
-
-            await mkdir(CONTENT, { recursive: true });
-            await writeFile(dest, `---\n${y}---\n\n${body.trim()}\n`, 'utf8');
-
-            const attachments = [];
-            const seen = new Set();
-            for (const a of cover ? [...used, cover] : used) {
-              if (seen.has(a.name)) continue;
-              seen.add(a.name); attachments.push(a);
-            }
-            if (attachments.length) {
-              await mkdir(path.join(ASSETS, slug), { recursive: true });
-              for (const a of attachments) await copyFile(a.source, path.join(ASSETS, slug, a.name));
-            }
-
-            synced[slug] = { note: rel, attachments: attachments.map((a) => a.name) };
-            console.log(`  synced ${slug}`);
+            return synced;
           }
 
-          // A note removed from the folder is an unpublish: mirror the deletion,
-          // but only for posts this workflow created.
-          for (const slug of Object.keys(previous.posts)) {
-            if (slug in synced) continue;
-            await rm(path.join(CONTENT, `${slug}.md`), { force: true });
-            await rm(path.join(ASSETS, slug), { recursive: true, force: true });
-            console.log(`  removed ${slug} (no longer in ${FOLDER})`);
-          }
+          // Series first: a post's `series:` field references a series slug,
+          // and syncing series first means a series added in the same push as
+          // the post that uses it lands before anything checks the reference.
+          const syncedSeries = await syncFolder({
+            label: 'series',
+            folder: process.env.VAULT_SERIES_FOLDER,
+            contentDir: path.resolve('src/content/series'),
+            assetsName: 'series',
+            ownedSlugs: previous.series,
+            toFrontmatter(data, { title, cover, rel }) {
+              if (!data.description) { problems.push(`${rel}: missing "description"`); return null; }
+              const fm = { title, description: String(data.description) };
+              if (typeof data.order === 'number') fm.order = data.order;
+              if (cover) { fm.cover = cover.rel; fm.coverAlt = String(data.coverAlt ?? ''); }
+              return fm;
+            },
+          });
 
-          await writeFile(MANIFEST, JSON.stringify({ posts: synced }, null, 2) + '\n', 'utf8');
+          const syncedPosts = await syncFolder({
+            label: 'post',
+            folder: process.env.VAULT_FOLDER,
+            contentDir: path.resolve('src/content/blog'),
+            assetsName: 'blog',
+            ownedSlugs: previous.posts,
+            toFrontmatter(data, { title, cover, rel }) {
+              const date = ymd(data.date);
+              if (!date) { problems.push(`${rel}: missing or invalid "date"`); return null; }
+              if (!data.description) { problems.push(`${rel}: missing "description"`); return null; }
+              const fm = { title, description: String(data.description), date };
+              if (data.updated && ymd(data.updated)) fm.updated = ymd(data.updated);
+              if (Array.isArray(data.tags) && data.tags.length) fm.tags = data.tags.map(String);
+              if (data.draft === true) fm.draft = true;
+              if (data.series) { fm.series = String(data.series); fm.seriesOrder = Number(data.seriesOrder); }
+              if (cover) { fm.cover = cover.rel; fm.coverAlt = String(data.coverAlt ?? ''); }
+              return fm;
+            },
+          });
+
+          await writeFile(MANIFEST, JSON.stringify({ posts: syncedPosts, series: syncedSeries }, null, 2) + '\n', 'utf8');
 
           if (problems.length) {
             for (const p of problems) console.log(`::warning::${p}`);
           }
-          console.log(`\n${Object.keys(synced).length} note(s) published from "${FOLDER}"`);
+          console.log(`\n${Object.keys(syncedSeries).length} series, ${Object.keys(syncedPosts).length} post(s) synced.`);
           EOF
-          node /tmp/sync.mjs
+          node .sync.mjs
+          rm .sync.mjs
 
       - name: Verify the site still builds
         run: |
